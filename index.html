@@ -1,0 +1,2263 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🍽️ Restaurant OS v2 - Final v8</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary: #2563eb; --primary-dark: #1d4ed8;
+      --success: #16a34a; --warning: #f59e0b; --danger: #dc2626;
+      --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --border: #e2e8f0;
+      --sidebar-w: 240px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Sarabun', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+    
+    #file-warning {
+      position: fixed; top: 0; left: 0; right: 0;
+      background: #fef3c7; color: #92400e;
+      padding: 12px 20px; font-size: 13px; z-index: 9999;
+      display: none; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid #fcd34d;
+    }
+    #file-warning.show { display: flex; }
+    
+    .status-bar {
+      position: fixed; top: 36px; left: 0; right: 0;
+      background: var(--danger); color: white;
+      padding: 4px 16px; font-size: 12px; display: flex; justify-content: space-between; z-index: 1000;
+    }
+    .status-bar.online { background: var(--success); }
+    
+    #login-screen {
+      position: fixed; inset: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex; align-items: center; justify-content: center; z-index: 2000;
+    }
+    .login-card {
+      background: white; padding: 32px; border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 90%; max-width: 420px;
+    }
+    .login-card h2 { margin-bottom: 8px; color: var(--primary); text-align: center; }
+    .login-form .form-group { margin-bottom: 16px; }
+    .login-form label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px; }
+    .login-form input, .login-form select {
+      width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px;
+      font-size: 14px; transition: border-color 0.2s;
+    }
+    .login-form input:focus, .login-form select:focus { outline: none; border-color: var(--primary); }
+    .login-form .btn { width: 100%; padding: 12px; font-size: 16px; margin-top: 8px; }
+    
+    #camera-preview {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+      z-index: 3000; flex-direction: column; align-items: center; justify-content: center;
+    }
+    #camera-preview.show { display: flex; }
+    #camera-video {
+      max-width: 90%; max-height: 70vh; border-radius: 12px;
+      border: 3px solid white; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+    #camera-canvas { display: none; }
+    .camera-controls { margin-top: 20px; display: flex; gap: 12px; }
+    .camera-timestamp {
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.7); color: white; padding: 8px 16px;
+      border-radius: 8px; font-size: 14px; font-weight: 500;
+    }
+    
+    .modal {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 2500; align-items: center; justify-content: center;
+    }
+    .modal.show { display: flex; }
+    .modal-content {
+      background: white; border-radius: 16px; padding: 24px;
+      width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+    }
+    .modal-close {
+      background: none; border: none; font-size: 24px; cursor: pointer;
+      color: #64748b; padding: 4px 8px; border-radius: 4px;
+    }
+    .modal-close:hover { background: #f1f5f9; }
+    
+    #app-screen { display: none; min-height: 100vh; }
+    .app-layout { display: flex; }
+    
+    .sidebar {
+      width: var(--sidebar-w); background: var(--card); border-right: 1px solid var(--border);
+      padding: 16px; position: fixed; top: 72px; bottom: 0; overflow-y: auto;
+    }
+    .user-profile {
+      padding: 16px; background: #f1f5f9; border-radius: 8px; margin-bottom: 16px;
+    }
+    .user-profile .name { font-weight: 600; margin-bottom: 4px; }
+    .user-profile .email { font-size: 12px; color: #64748b; }
+    .user-profile .role { display: inline-block; margin-top: 8px; padding: 4px 10px; background: var(--primary); color: white; border-radius: 999px; font-size: 11px; }
+    
+    .nav-menu { list-style: none; }
+    .nav-item {
+      padding: 12px 16px; border-radius: 8px; cursor: pointer; margin-bottom: 4px;
+      display: flex; align-items: center; gap: 10px; font-weight: 500; transition: all 0.2s;
+    }
+    .nav-item:hover { background: #f1f5f9; }
+    .nav-item.active { background: var(--primary); color: white; }
+    .nav-item.disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .main-content {
+      flex: 1; margin-left: var(--sidebar-w); padding: 20px; padding-top: 88px;
+    }
+    
+    .app-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 20px; background: var(--card); border-radius: 12px;
+      margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .app-header h1 { font-size: 1.25rem; color: var(--primary); }
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+    
+    .card {
+      background: var(--card); border-radius: 12px; padding: 20px;
+      margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .card h3 { margin-bottom: 16px; color: var(--primary-dark); border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    .form-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 14px; font-weight: 500; color: #475569; }
+    .form-group input, .form-group select, .form-group textarea {
+      padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 14px; transition: border-color 0.2s;
+    }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
+    .form-group input[readonly] { background: #f1f5f9; cursor: not-allowed; }
+    
+    .btn {
+      padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer;
+      font-weight: 500; font-size: 14px; transition: all 0.2s; display: inline-flex;
+      align-items: center; gap: 6px;
+    }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-warning { background: var(--warning); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-icon { padding: 6px; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; }
+    .btn-xs { padding: 3px 8px; font-size: 11px; border-radius: 4px; }
+    .btn-group { display: flex; gap: 4px; flex-wrap: wrap; }
+    
+    .timeline { position: relative; padding-left: 30px; }
+    .timeline::before {
+      content: ''; position: absolute; left: 8px; top: 10px; bottom: 10px;
+      width: 2px; background: var(--border);
+    }
+    .timeline-item {
+      position: relative; margin-bottom: 16px; padding: 14px;
+      background: var(--card); border-radius: 10px; border-left: 3px solid var(--primary);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .timeline-item::before {
+      content: ''; position: absolute; left: -26px; top: 18px;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--primary); border: 3px solid white;
+      box-shadow: 0 0 0 2px var(--border);
+    }
+    .timeline-item.expense { border-left-color: var(--danger); }
+    .timeline-item.expense::before { background: var(--danger); }
+    .timeline-item.readonly { border-left-color: #94a3b8; opacity: 0.8; }
+    .timeline-item.readonly::before { background: #94a3b8; }
+    
+    .timeline-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed var(--border);
+    }
+    .timeline-title { font-weight: 600; color: var(--primary-dark); }
+    .timeline-meta { font-size: 11px; color: #64748b; }
+    .timeline-actions { display: flex; gap: 2px; }
+    
+    .timeline-content { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+    .timeline-desc { font-size: 14px; }
+    .timeline-amount { font-size: 16px; font-weight: 600; text-align: right; }
+    
+    .stock-qty-control {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #f1f5f9; border-radius: 6px; padding: 2px;
+    }
+    .stock-qty-control button {
+      width: 24px; height: 24px; border: none; border-radius: 4px;
+      background: white; cursor: pointer; font-weight: bold;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .stock-qty-control button:hover { background: var(--primary); color: white; }
+    .stock-qty-display {
+      min-width: 40px; text-align: center; font-weight: 600;
+      padding: 2px 8px; background: white; border-radius: 4px;
+    }
+    .stock-low { color: var(--danger); font-weight: bold; }
+    
+    .daily-summary {
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      padding: 12px 16px; border-radius: 8px; margin-bottom: 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      border: 1px solid var(--border);
+    }
+    .summary-title { font-weight: 600; color: var(--primary-dark); }
+    .summary-stats { display: flex; gap: 20px; font-size: 14px; }
+    .summary-stat { display: flex; flex-direction: column; align-items: flex-end; }
+    .summary-stat label { font-size: 11px; color: #64748b; }
+    .summary-stat .value { font-weight: 600; }
+    
+    .date-range-bar {
+      display: flex; gap: 12px; align-items: center; margin-bottom: 16px;
+      padding: 12px; background: #f8fafc; border-radius: 8px; flex-wrap: wrap;
+    }
+    .date-range-bar input[type="date"], .date-range-bar input[type="month"] {
+      padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);
+    }
+    .date-range-bar .btn { padding: 8px 16px; }
+    
+    .category-tabs {
+      display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+      padding: 8px; background: #f8fafc; border-radius: 8px;
+    }
+    .category-tab {
+      padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer;
+      border: 2px solid var(--border); transition: all 0.2s;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .category-tab.selected { border-color: var(--primary); background: #dbeafe; }
+    .category-tab .color-dot {
+      width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+    }
+    .category-manage-btn {
+      margin-left: auto; padding: 4px 10px; font-size: 11px;
+    }
+    
+    .chart-container {
+      position: relative; height: 250px; margin: 16px 0;
+      background: white; border-radius: 8px; padding: 12px;
+      border: 1px solid var(--border);
+    }
+    
+    .permissions-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+      margin-top: 8px;
+    }
+    .perm-checkbox {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px; background: #f8fafc; border-radius: 6px;
+      font-size: 12px; cursor: pointer;
+    }
+    .perm-checkbox input { width: 16px; height: 16px; }
+    .perm-checkbox:hover { background: #f1f5f9; }
+    
+    .checklist-section {
+      background: #f8fafc; border-radius: 8px; padding: 12px; margin-bottom: 12px;
+    }
+    .checklist-item {
+      display: flex; align-items: center; gap: 8px; padding: 6px 0;
+    }
+    .checklist-item input[type="checkbox"] { width: 18px; height: 18px; }
+    .checklist-item input[type="text"] { flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; }
+    
+    /* Calendar Monthly View (7x6) */
+    .calendar-monthly {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-top: 16px;
+    }
+    .calendar-day {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      min-height: 100px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .calendar-day:hover {
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+    }
+    .calendar-day-header {
+      font-weight: 600;
+      font-size: 12px;
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    .calendar-day.today {
+      background: #dbeafe;
+      border-color: var(--primary);
+    }
+    .calendar-day.empty {
+      background: #f8fafc;
+      border-color: transparent;
+      cursor: default;
+    }
+    .calendar-shift {
+      font-size: 9px;
+      padding: 2px 4px;
+      background: #dbeafe;
+      border-radius: 4px;
+      margin-top: 2px;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .calendar-shift:hover {
+      background: #bfdbfe;
+    }
+    .calendar-weekday {
+      text-align: center;
+      font-weight: 600;
+      font-size: 11px;
+      color: #64748b;
+      padding: 4px;
+    }
+    
+    /* Timesheet Table */
+    .timesheet-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .timesheet-table th, .timesheet-table td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .timesheet-table th {
+      background: #f1f5f9;
+      font-weight: 600;
+      color: #475569;
+    }
+    .timesheet-table tr:hover {
+      background: #f8fafc;
+    }
+    
+    .badge { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+    .badge-success { background: #dcfce7; color: #166534; }
+    .badge-warning { background: #fef3c7; color: #92400e; }
+    .badge-danger { background: #fee2e2; color: #991b1b; }
+    .badge-info { background: #dbeafe; color: #1e40af; }
+    
+    .hidden { display: none !important; }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .mt-2 { margin-top: 8px; }
+    .mb-2 { margin-bottom: 8px; }
+    .flex { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+    .access-denied { text-align: center; padding: 40px; color: #64748b; }
+    
+    #toast {
+      position: fixed; bottom: 20px; right: 20px;
+      padding: 12px 24px; border-radius: 8px; color: white;
+      font-weight: 500; z-index: 3000; transform: translateY(100px);
+      transition: transform 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    #toast.show { transform: translateY(0); }
+    #toast.success { background: var(--success); }
+    #toast.error { background: var(--danger); }
+    #toast.info { background: var(--primary); }
+    
+    @media (max-width: 768px) {
+      .sidebar { width: 100%; position: relative; top: 72px; border-right: none; border-bottom: 1px solid var(--border); }
+      .main-content { margin-left: 0; }
+      .form-grid { grid-template-columns: 1fr; }
+      .nav-menu { display: flex; overflow-x: auto; padding-bottom: 8px; }
+      .timeline { padding-left: 24px; }
+      .timeline::before { left: 4px; }
+      .timeline-item::before { left: -20px; }
+      .timeline-content { grid-template-columns: 1fr; }
+      .timeline-amount { text-align: left; }
+      .permissions-grid { grid-template-columns: repeat(2, 1fr); }
+      .date-range-bar { flex-direction: column; align-items: stretch; }
+      .calendar-monthly { grid-template-columns: repeat(1, 1fr) !important; }
+      .timesheet-table { font-size: 12px; }
+      .timesheet-table th, .timesheet-table td { padding: 6px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="file-warning">
+    <span>⚠️ เปิดผ่าน <code>file://</code> อาจทำให้ซิงค์ไม่ทำงาน ใช้ <code>http://localhost</code> แทน</span>
+    <button class="btn btn-sm btn-warning" onclick="UI.closeFileWarning()">เข้าใจแล้ว</button>
+  </div>
+
+  <div id="statusBar" class="status-bar">
+    <span id="statusText">📴 Offline</span>
+    <span id="queueCount">Queue: 0</span>
+  </div>
+
+  <div id="toast"></div>
+
+  <div id="camera-preview">
+    <video id="camera-video" autoplay playsinline></video>
+    <canvas id="camera-canvas"></canvas>
+    <div class="camera-timestamp" id="camera-timestamp"></div>
+    <div class="camera-controls">
+      <button class="btn btn-success" onclick="Camera.capture()">📸 ถ่ายรูป</button>
+      <button class="btn btn-danger" onclick="Camera.close()">❌ ปิด</button>
+    </div>
+  </div>
+
+  <div id="category-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🏷️ จัดการหมวดหมู่</h3>
+        <button class="modal-close" onclick="Categories.closeModal()">×</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label>ชื่อหมวดหมู่</label><input type="text" id="cat-name" placeholder="เช่น วัตถุดิบสด"></div>
+        <div class="form-group"><label>สี</label><input type="color" id="cat-color" value="#2563eb"></div>
+        <div class="form-group"><label>ไอคอน</label><input type="text" id="cat-icon" placeholder="เช่น 🥬" maxlength="2"></div>
+      </div>
+      <input type="hidden" id="cat-id"><input type="hidden" id="cat-sheet">
+      <div class="mt-2 flex-between">
+        <button class="btn btn-success" onclick="Categories.save()">💾 บันทึก</button>
+        <button class="btn btn-outline" onclick="Categories.clearForm()">🔄 ล้างฟอร์ม</button>
+      </div>
+      <hr style="margin:16px 0;border:none;border-top:1px solid var(--border)">
+      <h4 style="margin-bottom:12px">หมวดหมู่ที่มี</h4>
+      <div id="category-list" style="max-height:200px;overflow-y:auto"></div>
+    </div>
+  </div>
+
+  <div id="shift-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>➕ เพิ่ม/แก้ไข กะ</h3>
+        <button class="modal-close" onclick="Calendar.closeShiftModal()">×</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label>📅 วันที่</label><input type="date" id="shift-date" readonly></div>
+        <div class="form-group"><label>ชื่อกะ</label><select id="shift-name-select"><option value="">-- เลือกกะ --</option></select></div>
+        <div class="form-group"><label>👤 พนักงาน</label><select id="shift-employee-select"><option value="">-- เลือกพนักงาน --</option></select></div>
+      </div>
+      <input type="hidden" id="shift-id">
+      <div class="mt-2 flex-between">
+        <button class="btn btn-success" onclick="Calendar.saveShift()">💾 บันทึก</button>
+        <button class="btn btn-outline" onclick="Calendar.closeShiftModal()">❌ ปิด</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="shift-manage-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>⚙️ จัดการกะ (กำหนดเวลาตายตัว)</h3>
+        <button class="modal-close" onclick="Calendar.closeManageModal()">×</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label>ชื่อกะ</label><input type="text" id="shift-def-name" placeholder="เช่น เช้า, บ่าย, ดึก"></div>
+        <div class="form-group"><label>เวลาเข้า</label><input type="time" id="shift-def-time-in"></div>
+        <div class="form-group"><label>เวลาออก</label><input type="time" id="shift-def-time-out"></div>
+      </div>
+      <input type="hidden" id="shift-def-id">
+      <div class="mt-2 flex-between">
+        <button class="btn btn-success" onclick="Calendar.saveShiftDef()">💾 บันทึก</button>
+        <button class="btn btn-outline" onclick="Calendar.clearShiftDefForm()">🔄 ล้างฟอร์ม</button>
+      </div>
+      <hr style="margin:16px 0;border:none;border-top:1px solid var(--border)">
+      <h4 style="margin-bottom:12px">กะที่กำหนดไว้</h4>
+      <div id="shift-def-list" style="max-height:200px;overflow-y:auto"></div>
+    </div>
+  </div>
+
+  <div id="login-screen">
+    <div class="login-card">
+      <h2>🍽️ Restaurant OS v2</h2>
+      <form class="login-form" onsubmit="Auth.login(event)">
+        <div class="form-group"><label>👤 ชื่อผู้ใช้ หรือ อีเมล</label><input type="text" id="login-username" placeholder="เช่น admin" required></div>
+        <div class="form-group"><label>🔐 รหัสผ่าน</label><input type="password" id="login-password" placeholder="••••••••" required></div>
+        <button type="submit" class="btn btn-primary" id="login-btn">🔐 เข้าสู่ระบบ</button>
+      </form>
+      <p style="margin-top:16px;font-size:12px;color:#94a3b8;text-align:center">ทดสอบ: <code>admin</code> / <code>admin123</code></p>
+    </div>
+  </div>
+
+  <div id="app-screen">
+    <div class="app-layout">
+      <aside class="sidebar">
+        <div class="user-profile">
+          <div class="name" id="sidebar-name">-</div>
+          <div class="email" id="sidebar-email">-</div>
+          <span class="role" id="sidebar-role">-</span>
+        </div>
+        <ul class="nav-menu" id="nav-menu"></ul>
+        <div style="margin-top:auto;padding-top:16px;border-top:1px solid var(--border)">
+          <button class="btn btn-outline btn-sm" style="width:100%" onclick="App.logout()">🚪 ออกจากระบบ</button>
+        </div>
+      </aside>
+      
+      <main class="main-content">
+        <div class="app-header">
+          <h1 id="page-title">🍽️ Restaurant OS</h1>
+          <div class="header-actions">
+            <span id="sync-indicator" class="badge badge-info">🟢 Synced</span>
+            <button class="btn btn-outline btn-sm" onclick="Sync.flush()">🔄 ซิงค์</button>
+            <button class="btn btn-outline btn-sm" onclick="App.pullFromCloud()">📥 ดึงข้อมูล</button>
+          </div>
+        </div>
+
+        <!-- POS Tab -->
+        <div id="tab-pos" class="tab-content">
+          <div class="card">
+            <h3>🧾 บันทึกการขาย</h3>
+            <div class="form-grid">
+              <div class="form-group"><label>📅 วันที่</label><input type="date" id="pos-date"></div>
+              <div class="form-group"><label>⏰ เวลา</label><input type="time" id="pos-time"></div>
+              <div class="form-group"><label>สินค้า</label><input type="text" id="pos-item"></div>
+              <div class="form-group"><label>จำนวน</label><input type="number" id="pos-qty" value="1" min="1"></div>
+              <div class="form-group"><label>ราคา</label><input type="number" id="pos-price"></div>
+              <div class="form-group"><label>หมวดหมู่</label><select id="pos-category"></select><button class="btn btn-xs btn-outline category-manage-btn" onclick="Categories.openModal('POS')">🏷️ จัดการ</button></div>
+              <div class="form-group" style="grid-column:1/-1"><label>หมายเหตุ</label><input type="text" id="pos-note"></div>
+            </div>
+            <input type="hidden" id="pos-id">
+            <div class="mt-2 flex-between"><button class="btn btn-success" onclick="POS.save()">💾 บันทึก</button><button class="btn btn-outline" onclick="POS.clearForm()">🔄 ล้างฟอร์ม</button></div>
+          </div>
+          <div class="card">
+            <h3>📊 สรุปยอดขาย</h3>
+            <div class="date-range-bar"><label>ตั้งแต่: <input type="date" id="pos-date-from"></label><label>ถึง: <input type="date" id="pos-date-to"></label><button class="btn btn-primary btn-sm" onclick="POS.loadSummary()">🔍 ดูสรุป</button><button class="btn btn-outline btn-sm" onclick="POS.resetSummary()">🔄 รีเซ็ต</button></div>
+            <div id="pos-summary" class="daily-summary hidden"><span class="summary-title">📈 ยอดรวม</span><div class="summary-stats"><div class="summary-stat"><label>รวม</label><span class="value" id="pos-total">-</span></div><div class="summary-stat"><label>รายการ</label><span class="value" id="pos-count">-</span></div></div></div>
+            <div class="chart-container"><canvas id="pos-chart"></canvas></div>
+            <div class="category-tabs" id="pos-category-tabs"></div>
+            <div id="pos-timeline" class="timeline"></div>
+          </div>
+        </div>
+
+        <!-- Expense Tab (Removed Summary) -->
+        <div id="tab-expense" class="tab-content hidden">
+          <div class="card">
+            <h3>💸 บันทึกค่าใช้จ่าย</h3>
+            <div class="form-grid">
+              <div class="form-group"><label>📅 วันที่</label><input type="date" id="exp-date"></div>
+              <div class="form-group"><label>⏰ เวลา</label><input type="time" id="exp-time"></div>
+              <div class="form-group"><label>หมวดหมู่</label><select id="exp-category"></select><button class="btn btn-xs btn-outline category-manage-btn" onclick="Categories.openModal('Expense')">🏷️ จัดการ</button></div>
+              <div class="form-group"><label>รายละเอียด</label><input type="text" id="exp-desc"></div>
+              <div class="form-group"><label>จำนวนเงิน</label><input type="number" id="exp-amount"></div>
+              <div class="form-group"><label>ผู้บันทึก</label><select id="exp-by-select"><option value="">-- เลือก --</option></select></div>
+              <div class="form-group" style="grid-column:1/-1"><label>หมายเหตุ</label><input type="text" id="exp-note"></div>
+            </div>
+            <input type="hidden" id="exp-id">
+            <div class="mt-2 flex-between"><button class="btn btn-success" onclick="Expense.save()">💾 บันทึก</button><button class="btn btn-outline" onclick="Expense.clearForm()">🔄 ล้างฟอร์ม</button></div>
+          </div>
+          <div class="card">
+            <h3>📋 รายการค่าใช้จ่าย</h3>
+            <div class="category-tabs" id="exp-category-tabs"></div>
+            <div id="expense-timeline"></div>
+          </div>
+        </div>
+
+        <!-- Stock Tab -->
+        <div id="tab-stock" class="tab-content hidden">
+          <div class="card">
+            <h3>📦 จัดการสต็อก</h3>
+            <div class="form-grid">
+              <div class="form-group"><label>📅 วันที่</label><input type="date" id="stock-date"></div>
+              <div class="form-group"><label>ชื่อสินค้า</label><input type="text" id="stock-name"></div>
+              <div class="form-group"><label>หมวดหมู่</label><select id="stock-category"></select><button class="btn btn-xs btn-outline category-manage-btn" onclick="Categories.openModal('Stock')">🏷️ จัดการ</button></div>
+              <div class="form-group"><label>จำนวน</label><input type="number" id="stock-qty" value="0"></div>
+              <div class="form-group"><label>หน่วย</label><input type="text" id="stock-unit"></div>
+              <div class="form-group"><label>ขั้นต่ำ</label><input type="number" id="stock-min" value="10"></div>
+              <div class="form-group" style="grid-column:1/-1"><label>หมายเหตุ</label><input type="text" id="stock-note"></div>
+            </div>
+            <input type="hidden" id="stock-id">
+            <div class="mt-2 flex-between"><button class="btn btn-success" onclick="Stock.save()">💾 บันทึก</button><button class="btn btn-outline" onclick="Stock.clearForm()">🔄 ล้างฟอร์ม</button></div>
+          </div>
+          <div class="card">
+            <h3>📊 รายการสต็อก</h3>
+            <div class="category-tabs" id="stock-category-tabs"></div>
+            <div id="stock-timeline" class="timeline"></div>
+          </div>
+        </div>
+
+        <!-- Check-in Tab -->
+        <div id="tab-checkin" class="tab-content hidden">
+          <div class="card">
+            <h3>✅ บันทึกเวลาทำงาน</h3>
+            <div class="form-grid">
+              <div class="form-group"><label>📅 วันที่</label><input type="date" id="checkin-date" readonly></div>
+              <div class="form-group"><label>⏰ เวลา</label><input type="time" id="checkin-time" readonly></div>
+              <div class="form-group"><label>👤 พนักงาน</label><select id="checkin-employee-select"><option value="">-- เลือกพนักงาน --</option></select></div>
+              <div class="form-group"><label>ประเภท</label><select id="checkin-type"><option value="in">🟢 เข้างาน</option><option value="out">🔴 ออกงาน</option><option value="break">☕ พัก</option></select></div>
+              <div class="form-group"><label>📷 รูป</label><button class="btn btn-outline" onclick="Camera.open()">📸 เปิดกล้อง</button></div>
+              <div class="form-group" style="grid-column:1/-1"><label>หมายเหตุ</label><input type="text" id="checkin-note"></div>
+            </div>
+            <input type="hidden" id="checkin-id"><input type="hidden" id="checkin-photo">
+            <div class="mt-2 flex-between"><button class="btn btn-success" onclick="Checkin.save()">⏰ บันทึก</button><button class="btn btn-outline" onclick="Checkin.clearForm()">🔄 ล้างฟอร์ม</button></div>
+          </div>
+          <div class="card">
+            <h3>📋 ประวัติการเข้า-ออก (ไม่สามารถแก้ไขได้)</h3>
+            <div id="checkin-timeline" class="timeline"></div>
+          </div>
+        </div>
+
+        <!-- Checklist Tab -->
+        <div id="tab-checklist" class="tab-content hidden">
+          <div class="card">
+            <h3>📋 Daily Checklist</h3>
+            <div class="form-grid">
+              <div class="form-group"><label>📅 วันที่</label><input type="date" id="checklist-date"></div>
+              <div class="form-group"><label>👤 พนักงาน</label><select id="checklist-employee-select"><option value="">-- เลือกพนักงาน --</option></select></div>
+            </div>
+            <h4 style="margin:16px 0 8px">🌅 ก่อนเปิดร้าน</h4><div class="checklist-section" id="checklist-morning"></div>
+            <h4 style="margin:16px 0 8px">🍰 งานประจำวัน</h4><div class="checklist-section" id="checklist-daily"></div>
+            <h4 style="margin:16px 0 8px">🌙 ปิดร้าน</h4><div class="checklist-section" id="checklist-evening"></div>
+            <h4 style="margin:16px 0 8px">⚠️ คุณภาพ</h4><div class="checklist-section" id="checklist-quality"></div>
+            <div class="form-group" style="margin-top:16px"><label>📊 บันทึกปัญหา</label><textarea id="checklist-problems" rows="3" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px"></textarea></div>
+            <div id="checklist-eval-section" class="hidden" style="margin-top:16px;padding:16px;background:#f1f5f9;border-radius:8px">
+              <h4>✅ สรุป (หัวหน้า)</h4>
+              <div class="form-group" style="margin-top:8px"><label><input type="radio" name="eval-complete" value="complete"> ครบถ้วน</label><label><input type="radio" name="eval-complete" value="improve"> ต้องปรับปรุง</label></div>
+              <div class="form-group" style="margin-top:8px"><label>ข้อปรับปรุง</label><input type="text" id="checklist-eval-improve" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px"></div>
+            </div>
+            <input type="hidden" id="checklist-id">
+            <div class="mt-2 flex-between"><button class="btn btn-success" onclick="Checklist.save()">💾 บันทึก</button><button class="btn btn-outline" onclick="Checklist.clearForm()">🔄 ล้างฟอร์ม</button></div>
+          </div>
+          <div class="card"><h3>📋 ประวัติ</h3><div id="checklist-history" class="timeline"></div></div>
+        </div>
+
+        <!-- Incidents Tab -->
+        <div id="tab-incidents" class="tab-content hidden">
+          <div class="card">
+            <h3>⚠️ บันทึกเหตุการณ์</h3>
+            <div class="form-grid">
+              <div class="form-group"><label>📅 วันที่</label><input type="date" id="incident-date"></div>
+              <div class="form-group"><label>เหตุการณ์</label><input type="text" id="incident-desc"></div>
+              <div class="form-group"><label>สาเหตุ</label><input type="text" id="incident-cause"></div>
+              <div class="form-group"><label>แก้ไข/ป้องกัน</label><input type="text" id="incident-solution"></div>
+              <div class="form-group"><label>ความเสียหาย (บาท)</label><input type="number" id="incident-damage"></div>
+            </div>
+            <input type="hidden" id="incident-id">
+            <div class="mt-2 flex-between"><button class="btn btn-success" onclick="Incidents.save()">💾 บันทึก</button><button class="btn btn-outline" onclick="Incidents.clearForm()">🔄 ล้างฟอร์ม</button></div>
+          </div>
+          <div class="card">
+            <h3>📋 ประวัติเหตุการณ์</h3>
+            <div class="table-wrap"><table id="incidents-table"><thead><tr><th>วันที่</th><th>เหตุการณ์</th><th>สาเหตุ</th><th>แก้ไข</th><th>ความเสียหาย</th><th>จัดการ</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- Timesheet Tab -->
+        <div id="tab-timesheet" class="tab-content hidden">
+          <div class="card">
+            <h3>📊 Timesheet - บันทึกเวลาทำงาน</h3>
+            <div class="date-range-bar">
+              <label>📅 เดือน: <input type="month" id="timesheet-month" onchange="Timesheet.load()"></label>
+              <button class="btn btn-primary btn-sm" onclick="Timesheet.load()">🔍 โหลดข้อมูล</button>
+            </div>
+            <div id="timesheet-summary" class="daily-summary hidden">
+              <span class="summary-title">📊 สรุป</span>
+              <div class="summary-stats">
+                <div class="summary-stat"><label>วันทำงาน</label><span class="value" id="timesheet-total-days">-</span></div>
+                <div class="summary-stat"><label>มาสาย</label><span class="value" id="timesheet-late-days" style="color:var(--danger)">-</span></div>
+                <div class="summary-stat"><label>พนักงาน</label><span class="value" id="timesheet-employees">-</span></div>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="timesheet-table" id="timesheet-table">
+                <thead><tr><th>วันที่</th><th>ชื่อพนักงาน</th><th>กะ</th><th>เวลาเข้ากะ</th><th>เวลาออกกะ</th><th>สาย</th><th>หมายเหตุ</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Calendar Tab (Monthly View 7x6) -->
+        <div id="tab-calendar" class="tab-content hidden">
+          <div class="card">
+            <h3>📅 ปฏิทินกะทำงาน (รายเดือน)</h3>
+            <div class="date-range-bar">
+              <label>📅 เดือน: <input type="month" id="calendar-month" onchange="Calendar.load()"></label>
+              <button class="btn btn-primary btn-sm" onclick="Calendar.load()">🔍 โหลด</button>
+              <button class="btn btn-success btn-sm" onclick="Calendar.openShiftModal()">➕ เพิ่มกะ</button>
+              <button class="btn btn-outline btn-sm" onclick="Calendar.openManageModal()">⚙️ จัดการกะ</button>
+            </div>
+            <div class="calendar-monthly" id="calendar-grid"></div>
+          </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="tab-users" class="tab-content hidden">
+          <div class="card">
+            <h3>👥 จัดการผู้ใช้</h3>
+            <div class="form-grid">
+              <div class="form-group"><label>ชื่อผู้ใช้ *</label><input type="text" id="user-username" placeholder="เช่น admin"></div>
+              <div class="form-group"><label>รหัสผ่าน *</label><input type="password" id="user-password"></div>
+              <div class="form-group"><label>ชื่อแสดง</label><input type="text" id="user-name"></div>
+              <div class="form-group"><label>อีเมล</label><input type="email" id="user-email"></div>
+              <div class="form-group"><label>บทบาท</label><select id="user-role"><option value="staff">👤 พนักงาน</option><option value="cashier">🧾 แคชเชียร์</option><option value="manager">📊 ผู้จัดการ</option><option value="admin">🔐 Admin</option></select></div>
+              <div class="form-group"><label>สถานะ</label><select id="user-active"><option value="true">✅ เปิด</option><option value="false">❌ ปิด</option></select></div>
+              <div class="form-group" style="grid-column:1/-1">
+                <label>สิทธิ์การเข้าถึง</label>
+                <div class="permissions-grid">
+                  <label class="perm-checkbox"><input type="checkbox" value="pos"> 🧾 POS</label>
+                  <label class="perm-checkbox"><input type="checkbox" value="expense"> 💸 ค่าใช้จ่าย</label>
+                  <label class="perm-checkbox"><input type="checkbox" value="stock"> 📦 สต็อก</label>
+                  <label class="perm-checkbox"><input type="checkbox" value="checkin"> ✅ Check-in</label>
+                  <label class="perm-checkbox"><input type="checkbox" value="checklist"> 📋 Checklist</label>
+                  <label class="perm-checkbox"><input type="checkbox" value="incidents"> ⚠️ เหตุการณ์</label>
+                  <label class="perm-checkbox"><input type="checkbox" value="timesheet"> 📊 Timesheet</label>
+                  <label class="perm-checkbox"><input type="checkbox" value="calendar"> 📅 ปฏิทิน</label>
+                  <label class="perm-checkbox"><input type="checkbox" value="logs"> 📋 Audit</label>
+                </div>
+              </div>
+            </div>
+            <input type="hidden" id="user-id">
+            <div class="mt-2 flex-between"><button class="btn btn-success" onclick="Users.save()">💾 บันทึก</button><button class="btn btn-outline" onclick="Users.clearForm()">🔄 ล้างฟอร์ม</button></div>
+          </div>
+          <div class="card"><h3>📋 รายชื่อผู้ใช้</h3><div class="table-wrap"><table id="users-table"><thead><tr><th>ชื่อผู้ใช้</th><th>ชื่อ</th><th>บทบาท</th><th>สิทธิ์</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody></tbody></table></div></div>
+        </div>
+
+        <!-- Audit Log Tab -->
+        <div id="tab-logs" class="tab-content hidden">
+          <div class="card">
+            <h3>📋 Audit Log</h3>
+            <div class="flex mb-2"><input type="text" id="log-filter" placeholder="🔍 ค้นหา..." style="flex:1" oninput="UI.renderLogs()"><select id="log-sheet-filter" onchange="UI.renderLogs()"><option value="">ทุกชีท</option><option value="POS">POS</option><option value="Expense">Expense</option><option value="Stock">Stock</option><option value="Checkin">Checkin</option><option value="Users">Users</option><option value="Categories">Categories</option><option value="Checklist">Checklist</option><option value="Incidents">Incidents</option><option value="Shifts">Shifts</option><option value="ShiftDefinitions">ShiftDefinitions</option></select></div>
+            <div class="table-wrap"><table id="log-table"><thead><tr><th>เวลา</th><th>ผู้ใช้</th><th>Action</th><th>Sheet</th><th>การเปลี่ยนแปลง</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+
+        <div id="access-denied" class="tab-content hidden"><div class="card access-denied"><h3>🔒 ไม่สามารถเข้าถึงได้</h3><p>บัญชีของคุณไม่มีสิทธิ์เข้าถึงหน้านี้</p></div></div>
+
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // ========================================
+    // ⚙️ CONFIG
+    // ========================================
+    const CONFIG = {
+      GAS_URL: 'https://script.google.com/macros/s/AKfycbzlOEP_8PZr5aKjygQOl9EZcd4YSzi8z4bg2_vfyj8d2ea_ymxDWVuNnbsJ3b4Z7pkKCA/exec',
+      DB_PREFIX: 'restos_v2_',
+      USER_KEY: 'restos_user',
+      SYNC_INTERVAL: 30000
+    };
+
+    if (window.location.protocol === 'file:') {
+      document.getElementById('file-warning').classList.add('show');
+    }
+
+    // ========================================
+    // 🛠️ UTILS (Fixed Date/Time - CRITICAL FIX)
+    // ========================================
+    const Utils = {
+      uuid: () => 'id_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8),
+      now: () => new Date().toISOString(),
+      today: () => {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      },
+      nowTime: () => {
+        const d = new Date();
+        return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      },
+      formatDateTime: (iso) => {
+        if (!iso) return '-';
+        const d = new Date(iso);
+        return d.toLocaleDateString('th-TH') + ' ' + d.toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'});
+      },
+      formatDate: (iso) => {
+        if (!iso) return '-';
+        if (typeof iso === 'string' && iso.includes('T')) {
+          return iso.split('T')[0];
+        }
+        const d = new Date(iso);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${day}/${month}/${year}`;
+      },
+      // ✅ แก้ปัญหาเวลาแสดงเป็น "1899-12-30" - แปลงเวลาจาก Google Sheets ให้ถูกต้อง
+      formatTime: (timeValue) => {
+        if (!timeValue) return '-';
+        
+        // ✅ ถ้าเป็นเวลาแบบ HH:MM หรือ HH:MM:SS อยู่แล้ว
+        if (typeof timeValue === 'string' && /^\d{2}:\d{2}/.test(timeValue)) {
+          return timeValue.substring(0, 5);
+        }
+        
+        // ✅ ถ้าเป็น ISO date string (จาก Google Sheets)
+        if (typeof timeValue === 'string' && timeValue.includes('T')) {
+          const d = new Date(timeValue);
+          if (isNaN(d.getTime())) return timeValue;
+          return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+        
+        // ✅ ถ้าเป็นตัวเลข (Excel/Sheets time serial)
+        if (typeof timeValue === 'number') {
+          const totalMinutes = Math.round(timeValue * 24 * 60);
+          const hours = Math.floor(totalMinutes / 60) % 24;
+          const minutes = totalMinutes % 60;
+          return String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+        }
+        
+        return String(timeValue).substring(0, 5);
+      },
+      formatTimeRange: (timeIn, timeOut) => {
+        const inTime = Utils.formatTime(timeIn);
+        const outTime = Utils.formatTime(timeOut);
+        return `${inTime} - ${outTime}`;
+      },
+      formatCurrency: (n) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(n || 0),
+      getLocal: (key) => { try { return JSON.parse(localStorage.getItem(CONFIG.DB_PREFIX + key) || '[]'); } catch { return []; } },
+      setLocal: (key, data) => localStorage.setItem(CONFIG.DB_PREFIX + key, JSON.stringify(data)),
+      getQueue: () => { try { return JSON.parse(localStorage.getItem(CONFIG.DB_PREFIX + 'queue') || '[]'); } catch { return []; } },
+      pushQueue: (item) => {
+        const q = Utils.getQueue();
+        item._retryCount = (item._retryCount || 0) + 1;
+        q.push({ ...item, queuedAt: Date.now() });
+        Utils.setLocal('queue', q);
+        UI.updateQueueCount();
+      }
+    };
+
+    // ========================================
+    // 🔐 AUTH
+    // ========================================
+    const Auth = {
+      async login(e) {
+        e?.preventDefault();
+        const username = document.getElementById('login-username').value.trim();
+        const password = document.getElementById('login-password').value;
+        const btn = document.getElementById('login-btn');
+        if (!username || !password) return UI.toast('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน', 'error');
+        btn.disabled = true; btn.textContent = '🔄 กำลังเข้าสู่ระบบ...';
+        try {
+          const response = await fetch(CONFIG.GAS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'auth', payload: { username, password } })
+          });
+          const result = await response.json();
+          if (result.success && result.user) {
+            App.user = result.user;
+            localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(App.user));
+            Audit.log('login', 'System', { method: 'web' }, App.user.username);
+            await App.pullFromCloud();
+            UI.toast('✅ เข้าสู่ระบบสำเร็จ', 'success');
+            App.showApp();
+          } else {
+            throw new Error(result.message || 'ล็อกอินล้มเหลว');
+          }
+        } catch (err) {
+          console.warn('Login error, using mock:', err);
+          const mockUsers = {
+            'admin': { username: 'admin', name: 'ผู้ดูแลระบบ', role: 'admin', permissions: ['pos','expense','stock','checkin','checklist','incidents','timesheet','calendar','users','logs'] },
+            'staff01': { username: 'staff01', name: 'พนักงาน 1', role: 'staff', permissions: ['pos','checkin','checklist'] }
+          };
+          if (mockUsers[username] && password === (username + '123')) {
+            App.user = mockUsers[username];
+            localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(App.user));
+            if (navigator.onLine) await App.pullFromCloud();
+            UI.toast('✅ เข้าสู่ระบบ (โหมดทดสอบ)', 'info');
+            App.showApp();
+            return;
+          }
+          UI.toast('❌ ' + err.message, 'error');
+        } finally {
+          btn.disabled = false; btn.textContent = '🔐 เข้าสู่ระบบ';
+        }
+      },
+      logout() {
+        if (confirm('ออกจากระบบ?')) {
+          Audit.log('logout', 'System', {}, App.user?.username);
+          localStorage.removeItem(CONFIG.USER_KEY);
+          location.reload();
+        }
+      },
+      canAccess(tabId) {
+        if (!App.user) return false;
+        if (App.user.role === 'admin') return true;
+        const perms = { pos:'pos', expense:'expense', stock:'stock', checkin:'checkin', checklist:'checklist', incidents:'incidents', timesheet:'timesheet', calendar:'calendar', users:'users', logs:'logs' };
+        return (App.user.permissions || []).includes(perms[tabId]);
+      },
+      renderMenu() {
+        const menu = document.getElementById('nav-menu');
+        const items = [
+          { id: 'pos', label: '🧾 POS', perm: 'pos' },
+          { id: 'expense', label: '💸 ค่าใช้จ่าย', perm: 'expense' },
+          { id: 'stock', label: '📦 สต็อก', perm: 'stock' },
+          { id: 'checkin', label: '✅ Check-in', perm: 'checkin' },
+          { id: 'checklist', label: '📋 Checklist', perm: 'checklist' },
+          { id: 'incidents', label: '⚠️ เหตุการณ์', perm: 'incidents' },
+          { id: 'timesheet', label: '📊 Timesheet', perm: 'timesheet' },
+          { id: 'calendar', label: '📅 ปฏิทิน', perm: 'calendar' },
+          { id: 'users', label: '👥 ผู้ใช้', perm: 'users', adminOnly: true },
+          { id: 'logs', label: '📋 Audit', perm: 'logs' }
+        ];
+        menu.innerHTML = items.map(item => {
+          const allowed = Auth.canAccess(item.id);
+          return `<li class="nav-item ${!allowed?'disabled':''} ${item.id==='pos'?'active':''}" ${allowed?`onclick="App.navigate('${item.id}')"`:'title="ไม่มีสิทธิ์"'} data-tab="${item.id}">${item.label}${item.adminOnly?'<span class="badge badge-warning">Admin</span>':''}</li>`;
+        }).join('');
+      }
+    };
+
+    // ========================================
+    // 🔄 SYNC
+    // ========================================
+    const Sync = {
+      online: navigator.onLine,
+      init() {
+        window.addEventListener('online', () => { Sync.online = true; UI.setStatus(true); Sync.flush(); });
+        window.addEventListener('offline', () => { Sync.online = false; UI.setStatus(false); });
+        UI.setStatus(Sync.online);
+        setInterval(() => Sync.flush(), CONFIG.SYNC_INTERVAL);
+      },
+      async send(action, sheet, payload, user, subAction = null) {
+        const bodyData = { action, sheet, payload, user, subAction };
+        Utils.pushQueue({ action, sheet, payload, user, subAction, bodyData, queuedAt: Date.now() });
+        if (Sync.online) await Sync.flush();
+      },
+      async flush() {
+        if (!Sync.online) return;
+        const queue = Utils.getQueue();
+        if (queue.length === 0) return;
+        UI.setSyncing(true);
+        const remaining = [];
+        let syncedCount = 0;
+        for (const item of queue) {
+          try {
+            if (item._retryCount > 3) {
+              console.log('🗑️ Removed stale queue item:', item.action, item.payload?.id);
+              continue;
+            }
+            const response = await fetch(CONFIG.GAS_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain' },
+              body: JSON.stringify(item.bodyData || { action: item.action, sheet: item.sheet, payload: item.payload, user: item.user, subAction: item.subAction })
+            });
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) throw new Error('Invalid response');
+            const result = await response.json();
+            if (!result.success && !result.note?.includes('Already')) throw new Error(result.message || 'Server error');
+            syncedCount++;
+          } catch (err) {
+            console.warn('Sync failed:', err.message);
+            remaining.push(item);
+          }
+        }
+        Utils.setLocal('queue', remaining);
+        UI.setSyncing(false);
+        if (syncedCount > 0) UI.toast(`✅ ซิงค์ ${syncedCount} รายการสำเร็จ`, 'success');
+      }
+    };
+
+    // ========================================
+    // 📝 AUDIT
+    // ========================================
+    const Audit = { log(action, sheet, payload, user) {
+      const entry = { id: Utils.uuid(), timestamp: Utils.now(), user: user||'unknown', action, sheet, recordId: payload?.id||'-', changes: JSON.stringify(payload).slice(0,500) };
+      const logs = Utils.getLocal('audit'); logs.unshift(entry); if (logs.length > 500) logs.pop();
+      Utils.setLocal('audit', logs); if (App.currentPage === 'logs') UI.renderLogs();
+    }};
+
+    // ========================================
+    // 🗄️ DB
+    // ========================================
+    const DB = {
+      async save(sheet, payload, user) {
+        const local = Utils.getLocal(sheet);
+        const existing = local.findIndex(r => String(r.id).trim() === String(payload.id).trim());
+        if (existing >= 0) local[existing] = { ...local[existing], ...payload, updated: Utils.now() };
+        else local.push({ ...payload, created: Utils.now() });
+        Utils.setLocal(sheet, local);
+        Audit.log('upsert', sheet, payload, user);
+        await Sync.send('upsert', sheet, payload, user);
+        return payload;
+      },
+      async delete(sheet, id, user) {
+        let local = Utils.getLocal(sheet);
+        local = local.filter(r => String(r.id).trim() !== String(id).trim());
+        Utils.setLocal(sheet, local);
+        Audit.log('delete', sheet, { id }, user);
+        await Sync.send('delete', sheet, { id }, user);
+      },
+      async updateQty(sheet, id, newQty, user) {
+        const local = Utils.getLocal(sheet);
+        const existing = local.findIndex(r => String(r.id).trim() === String(id).trim());
+        if (existing >= 0) {
+          local[existing].qty = Number(newQty) || 0;
+          local[existing].updated = Utils.now();
+          Utils.setLocal(sheet, local);
+          Audit.log('updateQty', sheet, { id, qty: newQty }, user);
+          await Sync.send('updateQty', sheet, { id, qty: newQty }, user);
+          return true;
+        }
+        return false;
+      },
+      get: (sheet) => Utils.getLocal(sheet),
+      async fetch(sheet, user) {
+        if (!Sync.online) return Utils.getLocal(sheet);
+        try {
+          const response = await fetch(CONFIG.GAS_URL, {
+            method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'fetch', sheet, user })
+          });
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) throw new Error('Invalid response');
+          const result = await response.json();
+          if (result.success && result.data) { Utils.setLocal(sheet, result.data); return result.data; }
+        } catch (err) { console.warn('Fetch failed:', err); }
+        return Utils.getLocal(sheet);
+      },
+      async getSummary(sheet, dateFrom, dateTo, user) {
+        if (!Sync.online) return null;
+        try {
+          const response = await fetch(CONFIG.GAS_URL, {
+            method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'getSummary', sheet, dateFrom, dateTo, user })
+          });
+          const result = await response.json();
+          if (result.success) return result;
+        } catch (err) { console.warn('Summary fetch failed:', err); }
+        return null;
+      }
+    };
+
+    // ========================================
+    // 📷 CAMERA
+    // ========================================
+    const Camera = {
+      stream: null,
+      open() {
+        document.addEventListener('visibilitychange', () => { if (document.hidden && App.currentPage !== 'checkin') Camera.close(); });
+        document.getElementById('category-modal').classList.remove('show');
+        document.getElementById('camera-preview').classList.add('show');
+        const video = document.getElementById('camera-video');
+        const timestamp = document.getElementById('camera-timestamp');
+        const updateTime = () => { timestamp.textContent = new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }); };
+        updateTime();
+        const timeInterval = setInterval(updateTime, 1000);
+        video.dataset.timeInterval = timeInterval;
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+          .then(stream => { Camera.stream = stream; video.srcObject = stream; })
+          .catch(err => { console.error('Camera error:', err); UI.toast('❌ ไม่สามารถเข้าถึงกล้อง', 'error'); Camera.close(); });
+      },
+      async capture() {
+        const video = document.getElementById('camera-video');
+        const canvas = document.getElementById('camera-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const timestamp = new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
+        ctx.font = 'bold 20px Sarabun, sans-serif';
+        ctx.fillStyle = 'white'; ctx.strokeStyle = 'black'; ctx.lineWidth = 4;
+        ctx.strokeText(timestamp, 20, canvas.height - 30);
+        ctx.fillText(timestamp, 20, canvas.height - 30);
+        const compressed = canvas.toDataURL('image/jpeg', 0.8);
+        document.getElementById('checkin-photo').value = compressed;
+        UI.toast('📸 ถ่ายรูปสำเร็จ', 'success');
+        Camera.close();
+      },
+      close() {
+        const video = document.getElementById('camera-video');
+        if (Camera.stream) { Camera.stream.getTracks().forEach(track => track.stop()); Camera.stream = null; }
+        video.srcObject = null;
+        if (video.dataset.timeInterval) { clearInterval(parseInt(video.dataset.timeInterval)); delete video.dataset.timeInterval; }
+        document.getElementById('camera-preview').classList.remove('show');
+      }
+    };
+
+    // ========================================
+    // 🏷️ CATEGORIES
+    // ========================================
+    const Categories = {
+      currentSheet: 'Expense',
+      openModal(sheet) {
+        Categories.currentSheet = sheet;
+        document.getElementById('cat-sheet').value = sheet;
+        document.getElementById('category-modal').classList.add('show');
+        Categories.renderList();
+      },
+      closeModal() {
+        document.getElementById('category-modal').classList.remove('show');
+        Categories.clearForm();
+      },
+      async save() {
+        const id = document.getElementById('cat-id').value;
+        const payload = {
+          id: id || Utils.uuid(),
+          sheet: Categories.currentSheet,
+          name: document.getElementById('cat-name').value.trim(),
+          color: document.getElementById('cat-color').value,
+          icon: document.getElementById('cat-icon').value.trim() || '📦',
+          created_by: App.user?.username,
+          timestamp: Utils.now()
+        };
+        if (!payload.name) return UI.toast('กรุณากรอกชื่อหมวดหมู่', 'error');
+        const local = Utils.getLocal('Categories');
+        const existing = local.findIndex(r => String(r.id).trim() === String(payload.id).trim());
+        if (existing >= 0) local[existing] = payload; else local.push(payload);
+        Utils.setLocal('Categories', local);
+        await Sync.send('categories', 'Categories', payload, App.user?.username, id ? 'update' : 'create');
+        Categories.renderList();
+        Categories.clearForm();
+        if (Categories.currentSheet === 'Expense') Expense.renderCategoryTabs();
+        if (Categories.currentSheet === 'Stock') Stock.renderCategoryTabs();
+        if (Categories.currentSheet === 'POS') POS.renderCategoryTabs();
+        UI.toast(id ? '✅ อัปเดตหมวดหมู่' : '✅ เพิ่มหมวดหมู่', 'success');
+      },
+      edit(id) {
+        const r = DB.get('Categories').find(x => String(x.id).trim() === String(id).trim()); if (!r) return;
+        document.getElementById('cat-id').value = r.id;
+        document.getElementById('cat-name').value = r.name;
+        document.getElementById('cat-color').value = r.color || '#2563eb';
+        document.getElementById('cat-icon').value = r.icon || '📦';
+      },
+      async remove(id) {
+        if (!confirm('ลบหมวดหมู่นี้?')) return;
+        await DB.delete('Categories', id, App.user?.username);
+        Categories.renderList();
+        if (Categories.currentSheet === 'Expense') Expense.renderCategoryTabs();
+        if (Categories.currentSheet === 'Stock') Stock.renderCategoryTabs();
+        if (Categories.currentSheet === 'POS') POS.renderCategoryTabs();
+        UI.toast('🗑️ ลบหมวดหมู่สำเร็จ', 'success');
+      },
+      clearForm() {
+        document.getElementById('cat-id').value = '';
+        document.getElementById('cat-name').value = '';
+        document.getElementById('cat-color').value = '#2563eb';
+        document.getElementById('cat-icon').value = '';
+      },
+      renderList() {
+        const cats = DB.get('Categories').filter(c => c.sheet === Categories.currentSheet || c.sheet === 'general');
+        const container = document.getElementById('category-list');
+        container.innerHTML = cats.map(r => `
+          <div class="flex-between mb-2" style="padding:8px;background:#f8fafc;border-radius:6px">
+            <span><span class="color-dot" style="background:${r.color};width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:6px"></span>${r.icon||'📦'} ${r.name}</span>
+            <div class="btn-group">
+              <button class="btn btn-xs btn-warning" onclick="Categories.edit('${r.id}')">✏️</button>
+              <button class="btn btn-xs btn-danger" onclick="Categories.remove('${r.id}')">🗑️</button>
+            </div>
+          </div>
+        `).join('') || '<p class="text-center" style="color:#64748b;padding:12px">ยังไม่มีหมวดหมู่</p>';
+      },
+      renderCategorySelect() {
+        const cats = DB.get('Categories');
+        const makeOptions = (sheet) => cats.filter(c => c.sheet === sheet || c.sheet === 'general')
+          .map(c => `<option value="${c.name}">${c.icon||'📦'} ${c.name}</option>`).join('') || '<option value="other">📦 อื่นๆ</option>';
+        const expSelect = document.getElementById('exp-category');
+        const stockSelect = document.getElementById('stock-category');
+        const posSelect = document.getElementById('pos-category');
+        if (expSelect) expSelect.innerHTML = makeOptions('Expense');
+        if (stockSelect) stockSelect.innerHTML = makeOptions('Stock');
+        if (posSelect) posSelect.innerHTML = makeOptions('POS');
+      },
+      renderCategoryTabs(containerId, sheet, onSelect) {
+        const cats = DB.get('Categories').filter(c => c.sheet === sheet || c.sheet === 'general');
+        const container = document.getElementById(containerId);
+        container.innerHTML = `<span class="category-tab selected" data-cat="" onclick="${onSelect}('')">ทั้งหมด</span>` +
+          cats.map(c => `<span class="category-tab" data-cat="${c.name}" style="border-color:${c.color}" onclick="${onSelect}('${c.name}')"><span class="color-dot" style="background:${c.color}"></span>${c.icon||'📦'} ${c.name}</span>`).join('');
+      }
+    };
+
+    // ========================================
+    // 🧾 POS
+    // ========================================
+    const POS = {
+      chart: null,
+      currentCategory: '',
+      save() {
+        const id = document.getElementById('pos-id').value;
+        const payload = {
+          id: id || Utils.uuid(), date: document.getElementById('pos-date').value || Utils.today(),
+          time: document.getElementById('pos-time').value || Utils.nowTime(),
+          item: document.getElementById('pos-item').value.trim(),
+          category: document.getElementById('pos-category').value,
+          qty: parseInt(document.getElementById('pos-qty').value) || 1,
+          price: parseFloat(document.getElementById('pos-price').value) || 0,
+          note: document.getElementById('pos-note').value.trim(),
+          cashier: App.user?.username, timestamp: Utils.now()
+        };
+        if (!payload.item || !payload.price) return UI.toast('กรุณากรอกชื่อสินค้าและราคา', 'error');
+        payload.total = payload.qty * payload.price;
+        const local = Utils.getLocal('POS');
+        const existing = local.findIndex(r => String(r.id).trim() === String(payload.id).trim());
+        if (existing >= 0) local[existing] = payload; else local.push(payload);
+        Utils.setLocal('POS', local);
+        POS.render();
+        DB.save('POS', payload, App.user?.username);
+        POS.clearForm();
+        UI.toast(id ? '✅ อัปเดตสำเร็จ' : '✅ บันทึกสำเร็จ', 'success');
+      },
+      edit(id) { const r = DB.get('POS').find(x => String(x.id).trim() === String(id).trim()); if (!r) return;
+        document.getElementById('pos-id').value = r.id;
+        document.getElementById('pos-date').value = r.date?.split('T')[0] || Utils.today();
+        document.getElementById('pos-time').value = r.time || Utils.nowTime();
+        document.getElementById('pos-item').value = r.item;
+        document.getElementById('pos-category').value = r.category || '';
+        document.getElementById('pos-qty').value = r.qty;
+        document.getElementById('pos-price').value = r.price;
+        document.getElementById('pos-note').value = r.note || '';
+      },
+      async remove(id) { if (!confirm('ลบรายการนี้?')) return; await DB.delete('POS', id, App.user?.username); POS.render(); UI.toast('🗑️ ลบสำเร็จ', 'success'); },
+      clearForm() {
+        document.getElementById('pos-id').value = '';
+        document.getElementById('pos-date').value = Utils.today();
+        document.getElementById('pos-time').value = Utils.nowTime();
+        document.getElementById('pos-item').value = '';
+        document.getElementById('pos-category').value = '';
+        document.getElementById('pos-qty').value = '1';
+        document.getElementById('pos-price').value = '';
+        document.getElementById('pos-note').value = '';
+      },
+      setCategoryFilter(cat) {
+        POS.currentCategory = cat;
+        document.querySelectorAll('#pos-category-tabs .category-tab').forEach(el => el.classList.remove('selected'));
+        if (cat === '') document.querySelector('#pos-category-tabs .category-tab[data-cat=""]').classList.add('selected');
+        else document.querySelector(`#pos-category-tabs .category-tab[data-cat="${cat}"]`)?.classList.add('selected');
+        POS.render();
+      },
+      async loadSummary() {
+        const from = document.getElementById('pos-date-from').value;
+        const to = document.getElementById('pos-date-to').value;
+        const summary = await DB.getSummary('POS', from, to, App.user?.username);
+        if (summary) {
+          document.getElementById('pos-summary').classList.remove('hidden');
+          document.getElementById('pos-total').textContent = Utils.formatCurrency(summary.total);
+          document.getElementById('pos-count').textContent = summary.data?.length || 0;
+          POS.renderChart(summary.byCategory, 'pos-chart');
+          POS.render(from, to);
+        }
+      },
+      resetSummary() {
+        document.getElementById('pos-summary').classList.add('hidden');
+        document.getElementById('pos-date-from').value = '';
+        document.getElementById('pos-date-to').value = '';
+        if (POS.chart) POS.chart.destroy();
+        POS.render();
+      },
+      renderChart(byCategory, canvasId) {
+        const ctx = document.getElementById(canvasId)?.getContext('2d');
+        if (!ctx) return;
+        if (POS.chart) POS.chart.destroy();
+        const labels = Object.keys(byCategory);
+        const values = Object.values(byCategory);
+        const colors = ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#8b5cf6', '#06b6d4'];
+        POS.chart = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: labels,
+            datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length), borderWidth: 2, borderColor: '#fff' }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right', labels: { font: { family: 'Sarabun' } } } }
+          }
+        });
+      },
+      renderCategoryTabs() { Categories.renderCategoryTabs('pos-category-tabs', 'POS', 'POS.setCategoryFilter'); },
+      render(dateFrom, dateTo) {
+        let data = DB.get('POS');
+        if (dateFrom || dateTo) {
+          const from = dateFrom ? new Date(dateFrom) : new Date('1970-01-01');
+          const to = dateTo ? new Date(dateTo) : new Date();
+          to.setHours(23, 59, 59);
+          data = data.filter(r => { const d = r.date ? new Date(r.date) : null; return d && d >= from && d <= to; });
+        }
+        if (POS.currentCategory) data = data.filter(r => r.category === POS.currentCategory);
+        data = data.sort((a,b) => new Date(b.date + 'T' + (b.time||'00:00')) - new Date(a.date + 'T' + (a.time||'00:00')));
+        const container = document.getElementById('pos-timeline');
+        if (data.length === 0) { container.innerHTML = '<p class="text-center" style="padding:20px;color:#64748b">ไม่พบข้อมูล</p>'; return; }
+        const grouped = {}; data.forEach(r => { const d = r.date?.split('T')[0] || Utils.today(); if (!grouped[d]) grouped[d] = []; grouped[d].push(r); });
+        container.innerHTML = Object.entries(grouped).map(([date, items]) => {
+          const dayTotal = items.reduce((s,r) => s + (r.total||0), 0);
+          return `<div class="daily-summary"><span class="summary-title">📅 ${Utils.formatDate(date)}</span><div class="summary-stats"><div class="summary-stat"><label>รายการ</label><span class="value">${items.length}</span></div><div class="summary-stat"><label>ยอดรวม</label><span class="value">${Utils.formatCurrency(dayTotal)}</span></div></div></div>` +
+            items.map(r => `<div class="timeline-item"><div class="timeline-header"><div><div class="timeline-title">${r.item} <small style="color:#64748b;font-weight:normal">(${r.category||'📦'})</small></div><div class="timeline-meta">🕐 ${Utils.formatTime(r.time)} • 👤 ${r.cashier||'-'}</div></div><div class="timeline-actions"><button class="btn btn-xs btn-warning" onclick="POS.edit('${r.id}')" title="แก้ไข">✏️</button><button class="btn btn-xs btn-danger" onclick="POS.remove('${r.id}')" title="ลบ">🗑️</button></div></div><div class="timeline-content"><div class="timeline-desc"><strong>${r.qty} × ${Utils.formatCurrency(r.price)}</strong><small>${r.note||'-'}</small></div><div class="timeline-amount">${Utils.formatCurrency(r.total)}</div></div></div>`).join('');
+        }).join('');
+      }
+    };
+
+    // ========================================
+    // 💸 EXPENSE (Removed Summary Section)
+    // ========================================
+    const Expense = {
+      currentCategory: '',
+      save() {
+        const id = document.getElementById('exp-id').value;
+        const payload = {
+          id: id || Utils.uuid(), type: 'expense',
+          date: document.getElementById('exp-date').value || Utils.today(),
+          time: document.getElementById('exp-time').value || Utils.nowTime(),
+          category: document.getElementById('exp-category').value,
+          description: document.getElementById('exp-desc').value.trim(),
+          amount: parseFloat(document.getElementById('exp-amount').value) || 0,
+          recorded_by: document.getElementById('exp-by-select').value || App.user?.username,
+          note: document.getElementById('exp-note').value.trim(),
+          timestamp: Utils.now()
+        };
+        if (!payload.description || !payload.amount) return UI.toast('กรุณากรอกรายละเอียดและจำนวนเงิน', 'error');
+        const local = Utils.getLocal('Expense');
+        const existing = local.findIndex(r => String(r.id).trim() === String(payload.id).trim());
+        if (existing >= 0) local[existing] = payload; else local.push(payload);
+        Utils.setLocal('Expense', local);
+        Expense.render();
+        DB.save('Expense', payload, App.user?.username);
+        Expense.clearForm();
+        UI.toast(id ? '✅ อัปเดตสำเร็จ' : '✅ บันทึกสำเร็จ', 'success');
+      },
+      edit(id) { const r = DB.get('Expense').find(x => String(x.id).trim() === String(id).trim()); if (!r) return;
+        document.getElementById('exp-id').value = r.id;
+        document.getElementById('exp-date').value = r.date?.split('T')[0] || Utils.today();
+        document.getElementById('exp-time').value = r.time || Utils.nowTime();
+        document.getElementById('exp-category').value = r.category;
+        document.getElementById('exp-desc').value = r.description;
+        document.getElementById('exp-amount').value = r.amount;
+        document.getElementById('exp-by-select').value = r.recorded_by || '';
+        document.getElementById('exp-note').value = r.note || '';
+      },
+      async remove(id) { if (!confirm('ลบรายการนี้?')) return; await DB.delete('Expense', id, App.user?.username); Expense.render(); UI.toast('🗑️ ลบสำเร็จ', 'success'); },
+      clearForm() {
+        document.getElementById('exp-id').value = '';
+        document.getElementById('exp-date').value = Utils.today();
+        document.getElementById('exp-time').value = Utils.nowTime();
+        document.getElementById('exp-desc').value = '';
+        document.getElementById('exp-amount').value = '';
+        document.getElementById('exp-by-select').value = App.user?.username || '';
+        document.getElementById('exp-note').value = '';
+      },
+      setCategoryFilter(cat) {
+        Expense.currentCategory = cat;
+        document.querySelectorAll('#exp-category-tabs .category-tab').forEach(el => el.classList.remove('selected'));
+        if (cat === '') document.querySelector('#exp-category-tabs .category-tab[data-cat=""]').classList.add('selected');
+        else document.querySelector(`#exp-category-tabs .category-tab[data-cat="${cat}"]`)?.classList.add('selected');
+        Expense.render();
+      },
+      renderCategoryTabs() { Categories.renderCategoryTabs('exp-category-tabs', 'Expense', 'Expense.setCategoryFilter'); },
+      render(dateFrom, dateTo) {
+        let data = DB.get('Expense').filter(r => r.type !== 'income');
+        if (dateFrom || dateTo) {
+          const from = dateFrom ? new Date(dateFrom) : new Date('1970-01-01');
+          const to = dateTo ? new Date(dateTo) : new Date();
+          to.setHours(23, 59, 59);
+          data = data.filter(r => { const d = r.date ? new Date(r.date) : null; return d && d >= from && d <= to; });
+        }
+        if (Expense.currentCategory) data = data.filter(r => r.category === Expense.currentCategory);
+        data = data.sort((a,b) => new Date(b.date + 'T' + (b.time||'00:00')) - new Date(a.date + 'T' + (a.time||'00:00')));
+        const container = document.getElementById('expense-timeline');
+        if (data.length === 0) { container.innerHTML = '<p class="text-center" style="padding:20px;color:#64748b">ไม่พบข้อมูล</p>'; return; }
+        const grouped = {}; data.forEach(r => { const d = r.date?.split('T')[0] || Utils.today(); if (!grouped[d]) grouped[d] = []; grouped[d].push(r); });
+        container.innerHTML = Object.entries(grouped).map(([date, items]) => {
+          const total = items.reduce((s,r) => s + (r.amount||0), 0);
+          return `<div class="daily-summary"><span class="summary-title">📅 ${Utils.formatDate(date)}</span><div class="summary-stats"><div class="summary-stat"><label>💸 รวม</label><span class="value">${Utils.formatCurrency(total)}</span></div></div></div>` +
+            items.map(r => `<div class="timeline-item expense"><div class="timeline-header"><div><div class="timeline-title">${r.category||'📦'} ${r.description}</div><div class="timeline-meta">🕐 ${Utils.formatTime(r.time)} • 👤 ${r.recorded_by||'-'}</div></div><div class="timeline-actions"><button class="btn btn-xs btn-warning" onclick="Expense.edit('${r.id}')" title="แก้ไข">✏️</button><button class="btn btn-xs btn-danger" onclick="Expense.remove('${r.id}')" title="ลบ">🗑️</button></div></div><div class="timeline-content"><div class="timeline-desc"><small>${r.note||'-'}</small></div><div class="timeline-amount" style="color:var(--danger)">-${Utils.formatCurrency(r.amount)}</div></div></div>`).join('');
+        }).join('');
+      }
+    };
+
+    // ========================================
+    // 📦 STOCK
+    // ========================================
+    const Stock = {
+      currentCategory: '',
+      editingId: null,
+      tempQty: null,
+      tempMin: null,
+      setCategoryFilter(cat) {
+        Stock.currentCategory = cat;
+        document.querySelectorAll('#stock-category-tabs .category-tab').forEach(el => el.classList.remove('selected'));
+        if (cat === '') document.querySelector('#stock-category-tabs .category-tab[data-cat=""]').classList.add('selected');
+        else document.querySelector(`#stock-category-tabs .category-tab[data-cat="${cat}"]`)?.classList.add('selected');
+        Stock.render();
+      },
+      startEdit(id) {
+        Stock.editingId = id;
+        const item = DB.get('Stock').find(r => String(r.id).trim() === String(id).trim());
+        if (!item) return;
+        Stock.tempQty = item.qty;
+        Stock.tempMin = item.min_alert;
+        Stock.render();
+        UI.toast('✏️ แก้ไข: ' + item.name + ' (กด 💾 เพื่อบันทึก)', 'info');
+      },
+      adjustQty(change) {
+        if (!Stock.editingId) return;
+        Stock.tempQty = Math.max(0, (Stock.tempQty || 0) + change);
+        Stock.render();
+      },
+      adjustMin(change) {
+        if (!Stock.editingId) return;
+        Stock.tempMin = Math.max(0, (Stock.tempMin || 0) + change);
+        Stock.render();
+      },
+      async saveEdit() {
+        if (!Stock.editingId) return;
+        const item = DB.get('Stock').find(r => String(r.id).trim() === String(Stock.editingId).trim());
+        if (!item) return;
+        item.qty = Stock.tempQty;
+        item.min_alert = Stock.tempMin;
+        item.updated = Utils.now();
+        const local = DB.get('Stock');
+        const idx = local.findIndex(r => String(r.id).trim() === String(item.id).trim());
+        if (idx >= 0) local[idx] = item;
+        Utils.setLocal('Stock', local);
+        Audit.log('upsert', 'Stock', { id: item.id, qty: item.qty, min_alert: item.min_alert }, App.user?.username);
+        await Sync.send('upsert', 'Stock', item, App.user?.username);
+        Stock.editingId = null;
+        Stock.tempQty = null;
+        Stock.tempMin = null;
+        Stock.render();
+        UI.toast('✅ บันทึกการแก้ไขสำเร็จ', 'success');
+      },
+      cancelEdit() {
+        Stock.editingId = null;
+        Stock.tempQty = null;
+        Stock.tempMin = null;
+        Stock.render();
+        UI.toast('❌ ยกเลิกการแก้ไข', 'info');
+      },
+      save() {
+        const id = document.getElementById('stock-id').value;
+        const payload = {
+          id: id || Utils.uuid(), date: document.getElementById('stock-date').value || Utils.today(),
+          name: document.getElementById('stock-name').value.trim(),
+          category: document.getElementById('stock-category').value,
+          qty: parseInt(document.getElementById('stock-qty').value) || 0,
+          unit: document.getElementById('stock-unit').value.trim(),
+          min_alert: parseInt(document.getElementById('stock-min').value) || 0,
+          note: document.getElementById('stock-note').value.trim(),
+          updated_by: App.user?.username, timestamp: Utils.now()
+        };
+        if (!payload.name || !payload.unit) return UI.toast('กรุณากรอกชื่อสินค้าและหน่วย', 'error');
+        const local = Utils.getLocal('Stock');
+        const existing = local.findIndex(r => String(r.id).trim() === String(payload.id).trim());
+        if (existing >= 0) local[existing] = payload; else local.push(payload);
+        Utils.setLocal('Stock', local);
+        Stock.render();
+        DB.save('Stock', payload, App.user?.username);
+        Stock.clearForm();
+        UI.toast(id ? '✅ อัปเดตสำเร็จ' : '✅ บันทึกสำเร็จ', 'success');
+      },
+      edit(id) { const r = DB.get('Stock').find(x => String(x.id).trim() === String(id).trim()); if (!r) return;
+        document.getElementById('stock-id').value = r.id;
+        document.getElementById('stock-date').value = r.date?.split('T')[0] || Utils.today();
+        document.getElementById('stock-name').value = r.name;
+        document.getElementById('stock-category').value = r.category;
+        document.getElementById('stock-qty').value = r.qty;
+        document.getElementById('stock-unit').value = r.unit;
+        document.getElementById('stock-min').value = r.min_alert;
+        document.getElementById('stock-note').value = r.note || '';
+      },
+      async remove(id) { if (!confirm('ลบสินค้านี้จากสต็อก?')) return; await DB.delete('Stock', id, App.user?.username); Stock.render(); UI.toast('🗑️ ลบสำเร็จ', 'success'); },
+      clearForm() {
+        document.getElementById('stock-id').value = '';
+        document.getElementById('stock-date').value = Utils.today();
+        document.getElementById('stock-name').value = '';
+        document.getElementById('stock-category').value = '';
+        document.getElementById('stock-qty').value = '0';
+        document.getElementById('stock-unit').value = '';
+        document.getElementById('stock-min').value = '10';
+        document.getElementById('stock-note').value = '';
+      },
+      renderCategoryTabs() { Categories.renderCategoryTabs('stock-category-tabs', 'Stock', 'Stock.setCategoryFilter'); },
+      render() {
+        let data = DB.get('Stock');
+        if (Stock.currentCategory) data = data.filter(r => r.category === Stock.currentCategory);
+        data = data.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+        const container = document.getElementById('stock-timeline');
+        if (data.length === 0) { container.innerHTML = '<p class="text-center" style="padding:20px;color:#64748b">ไม่พบข้อมูล</p>'; return; }
+        container.innerHTML = data.map(r => {
+          const low = (r.qty || 0) <= (r.min_alert || 0);
+          const isEditing = Stock.editingId === r.id;
+          return `
+            <div class="timeline-item ${low ? 'stock-low' : ''}">
+              <div class="timeline-header">
+                <div>
+                  <div class="timeline-title">${r.name} <small style="color:#64748b;font-weight:normal">(${r.category||'📦'})</small></div>
+                  <div class="timeline-meta">📅 ${Utils.formatDate(r.date)} • 🔄 ${Utils.formatTime(r.updated||r.timestamp)}</div>
+                </div>
+                <div class="timeline-actions">
+                  ${isEditing ? `
+                    <button class="btn btn-xs btn-success" onclick="Stock.saveEdit()" title="บันทึก">💾</button>
+                    <button class="btn btn-xs btn-outline" onclick="Stock.cancelEdit()" title="ยกเลิก">❌</button>
+                  ` : `
+                    <button class="btn btn-xs btn-warning" onclick="Stock.startEdit('${r.id}')" title="แก้ไข">✏️</button>
+                    <button class="btn btn-xs btn-danger" onclick="Stock.remove('${r.id}')" title="ลบ">🗑️</button>
+                  `}
+                </div>
+              </div>
+              <div class="timeline-content">
+                <div class="timeline-desc">
+                  <strong>จำนวน:</strong>
+                  ${isEditing ? `
+                    <div class="stock-qty-control">
+                      <button onclick="Stock.adjustQty(-1)" title="ลด 1">−</button>
+                      <span class="stock-qty-display ${low ? 'stock-low' : ''}">${Stock.tempQty ?? r.qty}</span>
+                      <button onclick="Stock.adjustQty(1)" title="เพิ่ม 1">+</button>
+                    </div>
+                    <small style="margin-left:8px">${r.unit || 'หน่วย'}</small>
+                    <br>
+                    <strong style="margin-top:4px;display:inline-block">ขั้นต่ำ:</strong>
+                    <div class="stock-qty-control" style="margin-left:8px">
+                      <button onclick="Stock.adjustMin(-1)" title="ลด 1">−</button>
+                      <span class="stock-qty-display">${Stock.tempMin ?? r.min_alert}</span>
+                      <button onclick="Stock.adjustMin(1)" title="เพิ่ม 1">+</button>
+                    </div>
+                  ` : `
+                    <span class="${low ? 'stock-low' : ''}">${r.qty || 0} ${r.unit || 'หน่วย'}</span>
+                    <small style="margin-left:8px">ขั้นต่ำ: ${r.min_alert}</small>
+                  `}
+                  ${low && !isEditing ? `<br><span class="badge badge-danger" style="margin-top:4px">⚠️ ต่ำกว่าขั้นต่ำ</span>` : ''}
+                </div>
+                <div class="timeline-desc" style="text-align:right"><small>${r.note||'-'}</small></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    };
+
+    // ========================================
+    // ✅ CHECKIN
+    // ========================================
+    const Checkin = {
+      save() {
+        const id = document.getElementById('checkin-id').value;
+        const payload = {
+          id: id || Utils.uuid(), date: document.getElementById('checkin-date').value,
+          time_val: document.getElementById('checkin-time').value,
+          employee: document.getElementById('checkin-employee-select').value,
+          check_type: document.getElementById('checkin-type').value,
+          note: document.getElementById('checkin-note').value.trim(),
+          photo_url: document.getElementById('checkin-photo').value,
+          recorded_by: App.user?.username, timestamp: Utils.now()
+        };
+        if (!payload.employee) return UI.toast('กรุณาเลือกพนักงาน', 'error');
+        const local = Utils.getLocal('Checkin');
+        const existing = local.findIndex(r => String(r.id).trim() === String(payload.id).trim());
+        if (existing >= 0) local[existing] = payload; else local.push(payload);
+        Utils.setLocal('Checkin', local); Checkin.render();
+        DB.save('Checkin', payload, App.user?.username); Checkin.clearForm();
+        UI.toast(id ? '✅ อัปเดตสำเร็จ' : '✅ บันทึกสำเร็จ', 'success');
+      },
+      edit(id) { UI.toast('⚠️ ไม่สามารถแก้ไขข้อมูลการลงเวลาได้', 'warning'); },
+      async remove(id) { if (!confirm('ลบรายการนี้?')) return; await DB.delete('Checkin', id, App.user?.username); Checkin.render(); },
+      clearForm() {
+        document.getElementById('checkin-id').value = '';
+        document.getElementById('checkin-date').value = Utils.today();
+        document.getElementById('checkin-time').value = Utils.nowTime();
+        document.getElementById('checkin-employee-select').value = '';
+        document.getElementById('checkin-type').value = 'in';
+        document.getElementById('checkin-note').value = '';
+        document.getElementById('checkin-photo').value = '';
+      },
+      render() {
+        const data = DB.get('Checkin');
+        const grouped = {};
+        data.forEach(r => {
+          const key = `${r.date}_${r.employee}`;
+          if (!grouped[key]) grouped[key] = { date: r.date, employee: r.employee, records: [] };
+          grouped[key].records.push(r);
+        });
+        
+        const container = document.getElementById('checkin-timeline');
+        const sortedKeys = Object.keys(grouped).sort((a,b) => {
+          const [dateA] = a.split('_');
+          const [dateB] = b.split('_');
+          return new Date(dateB) - new Date(dateA);
+        });
+        
+        if (sortedKeys.length === 0) { container.innerHTML = '<p class="text-center" style="padding:20px;color:#64748b">ยังไม่มีข้อมูล</p>'; return; }
+        
+        container.innerHTML = sortedKeys.map(key => {
+          const group = grouped[key];
+          const timeIn = group.records.find(r => r.check_type === 'in')?.time_val || '-';
+          const timeOut = group.records.find(r => r.check_type === 'out')?.time_val || '-';
+          const breaks = group.records.filter(r => r.check_type === 'break');
+          
+          return `
+            <div class="timeline-item readonly">
+              <div class="timeline-header">
+                <div>
+                  <div class="timeline-title">📅 ${Utils.formatDate(group.date)} - 👤 ${group.employee}</div>
+                  <div class="timeline-meta">🟢 เข้า: ${Utils.formatTime(timeIn)} | 🔴 ออก: ${Utils.formatTime(timeOut)} ${breaks.length > 0 ? '| ☕ พัก: ' + breaks.length + ' ครั้ง' : ''}</div>
+                </div>
+                <div class="timeline-actions">
+                  <button class="btn btn-xs btn-danger" onclick="Checkin.remove('${group.records[0].id}')" title="ลบ">🗑️</button>
+                </div>
+              </div>
+              <div class="timeline-desc">
+                ${group.records.map(r => r.note ? `<small>📝 ${r.note}</small>` : '').join('')}
+                ${group.records.some(r => r.photo_url) ? '<br><img src="'+group.records.find(r=>r.photo_url).photo_url+'" style="max-width:100px;border-radius:4px;margin-top:4px">' : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    };
+
+    // ========================================
+    // 📋 CHECKLIST
+    // ========================================
+    const Checklist = {
+      tasks: {
+        morning: ['ลงเวลาเข้า', 'เปิดเครื่องกาแฟ', 'เตรียมเบสชา', 'เตรียมวิปครีม', 'จัดแก้ว', 'เช็ดโต๊ะ', 'กวาดถูพื้น', 'เช็ดกระจก', 'รดน้ำต้นไม้', 'เช็ควัตถุดิบ'],
+        daily: ['ทำบานอฟฟี่', 'เติมขนม', 'ทำชีสพาย', 'เช็ควิปครีม', 'จัดระเบียบ'],
+        evening: ['ล้างอุปกรณ์', 'กวาดถูพื้น', 'เช็ดเคาน์เตอร์', 'รดน้ำต้นไม้', 'เติมวัตถุดิบ', 'เช็คสต๊อก', 'ทิ้งขยะ', 'ลงเวลาออก'],
+        quality: ['ไม่ใช้โทรศัพท์', 'ไม่ทำออเดอร์ผิด', 'ร้านสะอาด', 'ไม่เข้าสาย', 'ไม่มีพฤติกรรมไม่เหมาะสม']
+      },
+      init() {
+        this.renderChecklistSections();
+      },
+      renderChecklistSections() {
+        const renderSection = (id, tasks) => {
+          document.getElementById(id).innerHTML = tasks.map((t, i) => `
+            <div class="checklist-item">
+              <input type="checkbox" id="${id}-task-${i}" data-task="${t}">
+              <label for="${id}-task-${i}">${t}</label>
+            </div>
+          `).join('');
+        };
+        renderSection('checklist-morning', this.tasks.morning);
+        renderSection('checklist-daily', this.tasks.daily);
+        renderSection('checklist-evening', this.tasks.evening);
+        renderSection('checklist-quality', this.tasks.quality);
+      },
+      save() {
+        const id = document.getElementById('checklist-id').value;
+        const collectTasks = (prefix) => {
+          const completed = [];
+          document.querySelectorAll(`#${prefix} input[type="checkbox"]:checked`).forEach(cb => completed.push(cb.dataset.task));
+          return completed.join(',');
+        };
+        const payload = {
+          id: id || Utils.uuid(),
+          date: document.getElementById('checklist-date').value || Utils.today(),
+          employee: document.getElementById('checklist-employee-select').value,
+          morning_tasks: collectTasks('checklist-morning'),
+          daily_tasks: collectTasks('checklist-daily'),
+          evening_tasks: collectTasks('checklist-evening'),
+          quality_issues: collectTasks('checklist-quality'),
+          problem_notes: document.getElementById('checklist-problems').value,
+          eval_complete: document.querySelector('input[name="eval-complete"]:checked')?.value || '',
+          eval_improve: document.getElementById('checklist-eval-improve').value,
+          evaluated_by: App.user?.role === 'admin' ? App.user.username : '',
+          timestamp: Utils.now()
+        };
+        if (!payload.employee) return UI.toast('กรุณาเลือกพนักงาน', 'error');
+        const local = Utils.getLocal('Checklist');
+        const existing = local.findIndex(r => String(r.id).trim() === String(payload.id).trim());
+        if (existing >= 0) local[existing] = payload; else local.push(payload);
+        Utils.setLocal('Checklist', local);
+        DB.save('Checklist', payload, App.user?.username);
+        Checklist.clearForm();
+        Checklist.render();
+        UI.toast(id ? '✅ อัปเดต Checklist' : '✅ บันทึก Checklist', 'success');
+      },
+      edit(id) {
+        const r = DB.get('Checklist').find(x => String(x.id).trim() === String(id).trim());
+        if (!r) return;
+        document.getElementById('checklist-id').value = r.id;
+        document.getElementById('checklist-date').value = r.date?.split('T')[0] || Utils.today();
+        document.getElementById('checklist-employee-select').value = r.employee;
+        document.getElementById('checklist-problems').value = r.problem_notes || '';
+        const loadTasks = (prefix, tasksStr) => {
+          const completed = (tasksStr || '').split(',').map(t => t.trim());
+          completed.forEach(t => {
+            const cb = document.querySelector(`#${prefix} input[data-task="${t}"]`);
+            if (cb) cb.checked = true;
+          });
+        };
+        loadTasks('checklist-morning', r.morning_tasks);
+        loadTasks('checklist-daily', r.daily_tasks);
+        loadTasks('checklist-evening', r.evening_tasks);
+        loadTasks('checklist-quality', r.quality_issues);
+        if (App.user?.role === 'admin') {
+          document.getElementById('checklist-eval-section').classList.remove('hidden');
+          if (r.eval_complete) document.querySelector(`input[name="eval-complete"][value="${r.eval_complete}"]`).checked = true;
+          document.getElementById('checklist-eval-improve').value = r.eval_improve || '';
+        }
+      },
+      async remove(id) {
+        if (!confirm('ลบ Checklist นี้?')) return;
+        await DB.delete('Checklist', id, App.user?.username);
+        Checklist.render();
+      },
+      clearForm() {
+        document.getElementById('checklist-id').value = '';
+        document.getElementById('checklist-date').value = Utils.today();
+        document.getElementById('checklist-employee-select').value = '';
+        document.getElementById('checklist-problems').value = '';
+        document.querySelectorAll('.checklist-section input[type="checkbox"]').forEach(cb => cb.checked = false);
+        document.querySelectorAll('input[name="eval-complete"]').forEach(r => r.checked = false);
+        document.getElementById('checklist-eval-improve').value = '';
+        if (App.user?.role !== 'admin') document.getElementById('checklist-eval-section').classList.add('hidden');
+      },
+      render() {
+        const data = DB.get('Checklist').sort((a,b) => new Date(b.date) - new Date(a.date));
+        const container = document.getElementById('checklist-history');
+        if (data.length === 0) { container.innerHTML = '<p class="text-center" style="padding:20px;color:#64748b">ยังไม่มีข้อมูล</p>'; return; }
+        container.innerHTML = data.map(r => `
+          <div class="timeline-item">
+            <div class="timeline-header">
+              <div>
+                <div class="timeline-title">📅 ${Utils.formatDate(r.date)} - 👤 ${r.employee}</div>
+                <div class="timeline-meta">✅ เช้า: ${(r.morning_tasks||'').split(',').filter(t=>t).length} | 🍰 กลางวัน: ${(r.daily_tasks||'').split(',').filter(t=>t).length} | 🌙 เย็น: ${(r.evening_tasks||'').split(',').filter(t=>t).length}</div>
+              </div>
+              <div class="timeline-actions">
+                <button class="btn btn-xs btn-warning" onclick="Checklist.edit('${r.id}')">✏️</button>
+                ${App.user?.role === 'admin' ? `<button class="btn btn-xs btn-danger" onclick="Checklist.remove('${r.id}')">🗑️</button>` : ''}
+              </div>
+            </div>
+            <div class="timeline-desc">
+              ${r.problem_notes ? `<small>📊 ปัญหา: ${r.problem_notes}</small>` : ''}
+              ${r.eval_complete ? `<br><span class="badge ${r.eval_complete==='complete'?'badge-success':'badge-warning'}">${r.eval_complete==='complete'?'✅ ครบถ้วน':'⚠️ ต้องปรับปรุง'}</span>` : ''}
+            </div>
+          </div>
+        `).join('');
+      }
+    };
+
+    // ========================================
+    // ⚠️ INCIDENTS
+    // ========================================
+    const Incidents = {
+      save() {
+        const id = document.getElementById('incident-id').value;
+        const payload = {
+          id: id || Utils.uuid(),
+          date: document.getElementById('incident-date').value || Utils.today(),
+          incident: document.getElementById('incident-desc').value.trim(),
+          cause: document.getElementById('incident-cause').value.trim(),
+          solution: document.getElementById('incident-solution').value.trim(),
+          damage_value: parseFloat(document.getElementById('incident-damage').value) || 0,
+          reported_by: App.user?.username,
+          timestamp: Utils.now()
+        };
+        if (!payload.incident) return UI.toast('กรุณากรอกเหตุการณ์', 'error');
+        const local = Utils.getLocal('Incidents');
+        const existing = local.findIndex(r => String(r.id).trim() === String(payload.id).trim());
+        if (existing >= 0) local[existing] = payload; else local.push(payload);
+        Utils.setLocal('Incidents', local);
+        DB.save('Incidents', payload, App.user?.username);
+        Incidents.clearForm();
+        Incidents.render();
+        UI.toast(id ? '✅ อัปเดตเหตุการณ์' : '✅ บันทึกเหตุการณ์', 'success');
+      },
+      edit(id) {
+        const r = DB.get('Incidents').find(x => String(x.id).trim() === String(id).trim());
+        if (!r) return;
+        document.getElementById('incident-id').value = r.id;
+        document.getElementById('incident-date').value = r.date?.split('T')[0] || Utils.today();
+        document.getElementById('incident-desc').value = r.incident;
+        document.getElementById('incident-cause').value = r.cause;
+        document.getElementById('incident-solution').value = r.solution;
+        document.getElementById('incident-damage').value = r.damage_value;
+      },
+      async remove(id) {
+        if (!confirm('ลบเหตุการณ์นี้?')) return;
+        await DB.delete('Incidents', id, App.user?.username);
+        Incidents.render();
+      },
+      clearForm() {
+        document.getElementById('incident-id').value = '';
+        document.getElementById('incident-date').value = Utils.today();
+        document.getElementById('incident-desc').value = '';
+        document.getElementById('incident-cause').value = '';
+        document.getElementById('incident-solution').value = '';
+        document.getElementById('incident-damage').value = '';
+      },
+      render() {
+        const data = DB.get('Incidents').sort((a,b) => new Date(b.date) - new Date(a.date));
+        document.querySelector('#incidents-table tbody').innerHTML = data.map(r => `
+          <tr>
+            <td>${Utils.formatDate(r.date)}</td>
+            <td>${r.incident}</td>
+            <td>${r.cause||'-'}</td>
+            <td>${r.solution||'-'}</td>
+            <td class="text-right">${r.damage_value ? Utils.formatCurrency(r.damage_value) : '-'}</td>
+            <td class="btn-group">
+              <button class="btn btn-xs btn-warning" onclick="Incidents.edit('${r.id}')">✏️</button>
+              <button class="btn btn-xs btn-danger" onclick="Incidents.remove('${r.id}')">🗑️</button>
+            </td>
+          </tr>
+        `).join('') || '<tr><td colspan="6" class="text-center">ยังไม่มีข้อมูล</td></tr>';
+      }
+    };
+
+    // ========================================
+    // 📊 TIMESHEET
+    // ========================================
+    const Timesheet = {
+      async load() {
+        const monthVal = document.getElementById('timesheet-month').value;
+        const [year, month] = monthVal ? monthVal.split('-') : [new Date().getFullYear(), new Date().getMonth() + 1];
+        UI.toast('📥 กำลังโหลด Timesheet...', 'info');
+        try {
+          const response = await fetch(CONFIG.GAS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'getTimesheet', month, year, user: App.user?.username })
+          });
+          const result = await response.json();
+          if (result.success) {
+            document.getElementById('timesheet-summary').classList.remove('hidden');
+            document.getElementById('timesheet-total-days').textContent = result.summary?.totalDays || 0;
+            document.getElementById('timesheet-late-days').textContent = result.summary?.lateDays || 0;
+            document.getElementById('timesheet-employees').textContent = result.summary?.totalEmployees || 0;
+            document.querySelector('#timesheet-table tbody').innerHTML = result.data?.map(r => `
+              <tr>
+                <td>${Utils.formatDate(r.date)}</td>
+                <td>${r.employee}</td>
+                <td>${r.shift||'-'}</td>
+                <td>${Utils.formatTime(r.timeIn)}</td>
+                <td>${Utils.formatTime(r.timeOut)}</td>
+                <td>${r.isLate ? '<span class="badge badge-danger">สาย</span>' : '<span class="badge badge-success">ปกติ</span>'}</td>
+                <td>${r.note||'-'}</td>
+              </tr>
+            `).join('') || '<tr><td colspan="7" class="text-center">ไม่พบข้อมูล</td></tr>';
+            UI.toast('✅ โหลด Timesheet สำเร็จ', 'success');
+          }
+        } catch (err) {
+          UI.toast('❌ โหลดล้มเหลว: ' + err.message, 'error');
+        }
+      }
+    };
+
+    // ========================================
+   // ========================================
+// 📅 CALENDAR (Fixed - Monthly View + Editable Date)
+// ========================================
+const Calendar = {
+  shiftDefinitions: [],
+  currentMonth: new Date().getMonth(),
+  currentYear: new Date().getFullYear(),
+  
+  async load() {
+    const monthVal = document.getElementById('calendar-month').value;
+    const [year, month] = monthVal ? monthVal.split('-') : [new Date().getFullYear(), new Date().getMonth() + 1];
+    Calendar.currentYear = parseInt(year);
+    Calendar.currentMonth = parseInt(month) - 1;
+    
+    try {
+      const response = await fetch(CONFIG.GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'getCalendar', month: month, year: year, user: App.user?.username })
+      });
+      
+      // ✅ ตรวจสอบ 404
+      if (response.status === 404) {
+        throw new Error('❌ GAS_URL ไม่ถูกต้อง หรือยังไม่ได้ Deploy');
+      }
+      
+      const result = await response.json();
+      if (result.success) {
+        Calendar.renderMonthlyCalendar(result.data);
+        await Calendar.loadShiftDefinitions();
+      }
+    } catch (err) {
+      UI.toast('❌ โหลดปฏิทินล้มเหลว: ' + err.message, 'error');
+      console.error('Calendar load error:', err);
+    }
+  },
+  
+  // ✅ แสดงปฏิทินรายเดือน (7 วัน x 5-6 แถว)
+  renderMonthlyCalendar(daysData) {
+    const grid = document.getElementById('calendar-grid');
+    const today = Utils.today();
+    const year = Calendar.currentYear;
+    const month = Calendar.currentMonth;
+    
+    const firstDay = new Date(year, month, 1);
+    let startDay = firstDay.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    const weekdays = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+    let html = weekdays.map(d => `<div class="calendar-weekday">${d}</div>`).join('');
+    
+    for (let i = 0; i < startDay; i++) {
+      html += `<div class="calendar-day empty"></div>`;
+    }
+    
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const isToday = dateStr === today;
+      const dayData = daysData.find(dd => dd.date === dateStr) || { shifts: [] };
+      
+      html += `
+        <div class="calendar-day ${isToday ? 'today' : ''}" onclick="Calendar.openShiftModal('${dateStr}')">
+          <div class="calendar-day-header">${d}</div>
+          ${dayData.shifts.slice(0, 3).map(s => `
+            <div class="calendar-shift" onclick="event.stopPropagation(); Calendar.openShiftModal('${dateStr}', '${s.id}')" title="${s.shift_name}: ${Utils.formatTime(s.time_in)} - ${Utils.formatTime(s.time_out)}">
+              ${s.shift_name}: ${s.employee}
+            </div>
+          `).join('')}
+          ${dayData.shifts.length > 3 ? `<div style="font-size:9px;color:#64748b">+${dayData.shifts.length - 3}</div>` : ''}
+          ${App.user?.role === 'admin' ? '<div style="font-size:9px;color:#94a3b8;margin-top:4px">+ เพิ่มกะ</div>' : ''}
+        </div>
+      `;
+    }
+    
+    grid.innerHTML = html;
+  },
+  
+  async loadShiftDefinitions() {
+    try {
+      const response = await fetch(CONFIG.GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'fetch', sheet: 'ShiftDefinitions', user: App.user?.username })
+      });
+      const result = await response.json();
+      if (result.success) {
+        Calendar.shiftDefinitions = result.data;
+        Calendar.renderShiftDefList();
+        Calendar.populateShiftSelect();
+      }
+    } catch (err) {
+      console.warn('Failed to load shift definitions:', err);
+    }
+  },
+  
+  renderShiftDefList() {
+    const container = document.getElementById('shift-def-list');
+    if (!container) return;
+    container.innerHTML = Calendar.shiftDefinitions.map(s => `
+      <div class="flex-between mb-2" style="padding:8px;background:#f8fafc;border-radius:6px">
+        <span><strong>${s.name}</strong> (${Utils.formatTime(s.time_in)} - ${Utils.formatTime(s.time_out)})</span>
+        <div class="btn-group">
+          <button class="btn btn-xs btn-warning" onclick="Calendar.editShiftDef('${s.id}')">✏️</button>
+          <button class="btn btn-xs btn-danger" onclick="Calendar.deleteShiftDef('${s.id}')">🗑️</button>
+        </div>
+      </div>
+    `).join('') || '<p class="text-center" style="color:#64748b;padding:12px">ยังไม่มีกะที่กำหนด</p>';
+  },
+  
+  populateShiftSelect() {
+    const select = document.getElementById('shift-name-select');
+    if (!select) return;
+    select.innerHTML = '<option value="">-- เลือกกะ --</option>' + 
+      Calendar.shiftDefinitions.map(s => `<option value="${s.name}" data-time-in="${s.time_in}" data-time-out="${s.time_out}">${s.name} (${Utils.formatTime(s.time_in)} - ${Utils.formatTime(s.time_out)})</option>`).join('');
+  },
+  
+  populateEmployeeSelect() {
+    const select = document.getElementById('shift-employee-select');
+    if (!select) return;
+    const users = DB.get('Users');
+    select.innerHTML = '<option value="">-- เลือกพนักงาน --</option>' + 
+      users.map(u => `<option value="${u.username}">${u.name || u.username}</option>`).join('');
+  },
+  
+  // ✅ เปิดโมดัลเพิ่ม/แก้ไขกะ (วันที่แก้ไขได้)
+  openShiftModal(date, shiftId = null) {
+    document.getElementById('shift-date').value = date || Utils.today();
+    document.getElementById('shift-date').removeAttribute('readonly'); // ✅ ทำให้เลือกวันที่ได้
+    
+    Calendar.populateEmployeeSelect();
+    
+    if (shiftId) {
+      // โหลดข้อมูลกะที่มีเพื่อแก้ไข
+      const allShifts = DB.get('Shifts');
+      const shift = allShifts.find(s => String(s.id).trim() === String(shiftId).trim());
+      if (shift) {
+        document.getElementById('shift-id').value = shiftId;
+        document.getElementById('shift-name-select').value = shift.shift_name || '';
+        document.getElementById('shift-employee-select').value = shift.employee || '';
+      }
+    } else {
+      document.getElementById('shift-id').value = '';
+      document.getElementById('shift-name-select').value = '';
+      document.getElementById('shift-employee-select').value = '';
+    }
+    
+    document.getElementById('shift-modal').classList.add('show');
+  },
+  
+  closeShiftModal() {
+    document.getElementById('shift-modal').classList.remove('show');
+  },
+  
+  async saveShift() {
+    const id = document.getElementById('shift-id').value;
+    const shiftName = document.getElementById('shift-name-select').value;
+    const shiftOption = document.getElementById('shift-name-select').options[document.getElementById('shift-name-select').selectedIndex];
+    const payload = {
+      id: id || Utils.uuid(),
+      date: document.getElementById('shift-date').value, // ✅ วันที่ที่เลือก
+      shift_name: shiftName,
+      employee: document.getElementById('shift-employee-select').value,
+      time_in: shiftOption?.dataset?.timeIn || '',
+      time_out: shiftOption?.dataset?.timeOut || '',
+      timestamp: Utils.now()
+    };
+    if (!payload.shift_name || !payload.employee || !payload.date) return UI.toast('กรุณาเลือกวันที่ กะ และพนักงาน', 'error');
+    
+    await Sync.send('manageShift', 'Shifts', payload, App.user?.username, id ? 'update' : 'create');
+    Calendar.closeShiftModal();
+    Calendar.load();
+    UI.toast('✅ บันทึกกะสำเร็จ', 'success');
+  },
+  
+  openManageModal() {
+    document.getElementById('shift-def-id').value = '';
+    document.getElementById('shift-def-name').value = '';
+    document.getElementById('shift-def-time-in').value = '';
+    document.getElementById('shift-def-time-out').value = '';
+    document.getElementById('shift-manage-modal').classList.add('show');
+  },
+  
+  closeManageModal() {
+    document.getElementById('shift-manage-modal').classList.remove('show');
+  },
+  
+  clearShiftDefForm() {
+    document.getElementById('shift-def-id').value = '';
+    document.getElementById('shift-def-name').value = '';
+    document.getElementById('shift-def-time-in').value = '';
+    document.getElementById('shift-def-time-out').value = '';
+  },
+  
+  async saveShiftDef() {
+    const id = document.getElementById('shift-def-id').value;
+    const payload = {
+      id: id || Utils.uuid(),
+      name: document.getElementById('shift-def-name').value.trim(),
+      time_in: document.getElementById('shift-def-time-in').value,
+      time_out: document.getElementById('shift-def-time-out').value,
+      timestamp: Utils.now()
+    };
+    if (!payload.name || !payload.time_in || !payload.time_out) return UI.toast('กรุณากรอกข้อมูลกะให้ครบ', 'error');
+    await Sync.send('upsert', 'ShiftDefinitions', payload, App.user?.username);
+    Calendar.clearShiftDefForm();
+    await Calendar.loadShiftDefinitions();
+    UI.toast('✅ บันทึกกะสำเร็จ', 'success');
+  },
+  
+  editShiftDef(id) {
+    const s = Calendar.shiftDefinitions.find(x => String(x.id).trim() === String(id).trim());
+    if (!s) return;
+    document.getElementById('shift-def-id').value = s.id;
+    document.getElementById('shift-def-name').value = s.name;
+    document.getElementById('shift-def-time-in').value = s.time_in;
+    document.getElementById('shift-def-time-out').value = s.time_out;
+    document.getElementById('shift-manage-modal').classList.add('show');
+  },
+  
+  async deleteShiftDef(id) {
+    if (!confirm('ลบกะนี้?')) return;
+    await DB.delete('ShiftDefinitions', id, App.user?.username);
+    await Calendar.loadShiftDefinitions();
+    UI.toast('🗑️ ลบกะสำเร็จ', 'success');
+  }
+};
+
+    // ========================================
+    // 👥 USERS
+    // ========================================
+    const Users = {
+      save() {
+        const id = document.getElementById('user-id').value;
+        const perms = Array.from(document.querySelectorAll('.perm-checkbox input:checked')).map(cb => cb.value).join(',');
+        const payload = {
+          id: id || Utils.uuid(),
+          username: document.getElementById('user-username').value.trim(),
+          password: document.getElementById('user-password').value,
+          name: document.getElementById('user-name').value.trim(),
+          email: document.getElementById('user-email').value.trim(),
+          role: document.getElementById('user-role').value,
+          permissions: perms,
+          active: document.getElementById('user-active').value === 'true',
+          timestamp: Utils.now()
+        };
+        if (!payload.username || (!id && !payload.password)) return UI.toast('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน (สำหรับผู้ใช้ใหม่)', 'error');
+        const local = Utils.getLocal('Users');
+        const existing = local.findIndex(r => String(r.id).trim() === String(payload.id).trim());
+        if (existing >= 0) local[existing] = payload; else local.push(payload);
+        Utils.setLocal('Users', local);
+        Users.render();
+        DB.save('Users', payload, App.user?.username);
+        Users.clearForm();
+        UI.toast(id ? '✅ อัปเดตผู้ใช้สำเร็จ' : '✅ เพิ่มผู้ใช้สำเร็จ', 'success');
+        App.updateEmployeeDropdowns();
+      },
+      edit(id) {
+        const r = DB.get('Users').find(x => String(x.id).trim() === String(id).trim()); if (!r) return;
+        document.getElementById('user-id').value = r.id;
+        document.getElementById('user-username').value = r.username || '';
+        document.getElementById('user-password').value = '';
+        document.getElementById('user-name').value = r.name || '';
+        document.getElementById('user-email').value = r.email || '';
+        document.getElementById('user-role').value = r.role || 'staff';
+        document.getElementById('user-active').value = String(r.active !== false);
+        const perms = (r.permissions || '').split(',').map(p => p.trim());
+        document.querySelectorAll('.perm-checkbox input').forEach(cb => { cb.checked = perms.includes(cb.value); });
+      },
+      async remove(id) {
+        if (!confirm('ลบผู้ใช้นี้?')) return;
+        if (String(id) === String(App.user?.id)) return UI.toast('ไม่สามารถลบบัญชีตัวเองได้', 'error');
+        await DB.delete('Users', id, App.user?.username);
+        Users.render();
+        App.updateEmployeeDropdowns();
+      },
+      clearForm() {
+        document.getElementById('user-id').value = '';
+        document.getElementById('user-username').value = '';
+        document.getElementById('user-password').value = '';
+        document.getElementById('user-name').value = '';
+        document.getElementById('user-email').value = '';
+        document.getElementById('user-role').value = 'staff';
+        document.getElementById('user-active').value = 'true';
+        document.querySelectorAll('.perm-checkbox input').forEach(cb => cb.checked = false);
+      },
+      render() {
+        const data = DB.get('Users').sort((a,b) => (a.username||'').localeCompare(b.username||''));
+        const roles = { admin:'🔐', manager:'📊', staff:'👤', cashier:'🧾' };
+        document.querySelector('#users-table tbody').innerHTML = data.map(r => {
+          const perms = (r.permissions || '').split(',').filter(p=>p).map(p=>`<span class="badge badge-info" style="margin:2px">${p}</span>`).join('') || '-';
+          return `<tr><td><strong>${r.username||r.email}</strong></td><td>${r.name||'-'}</td><td><span class="badge badge-info">${roles[r.role]||r.role}</span></td><td>${perms}</td><td>${r.active===false?'<span class="badge badge-danger">❌</span>':'<span class="badge badge-success">✅</span>'}</td><td class="btn-group"><button class="btn btn-xs btn-warning" onclick="Users.edit('${r.id}')" title="แก้ไข">✏️</button><button class="btn btn-xs btn-danger" onclick="Users.remove('${r.id}')" title="ลบ">🗑️</button></td></tr>`;
+        }).join('') || '<tr><td colspan="6" class="text-center">ยังไม่มีผู้ใช้</td></tr>';
+      }
+    };
+
+    // ========================================
+    // 🖥️ UI
+    // ========================================
+    const UI = {
+      toast(msg, type='info') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `show ${type}`; setTimeout(() => t.classList.remove('show'), 3000); },
+      setStatus(online) { const bar = document.getElementById('statusBar'); bar.className = `status-bar ${online?'online':''}`; document.getElementById('statusText').textContent = online?'🟢 Online':'📴 Offline'; },
+      setSyncing(syncing) { const el = document.getElementById('sync-indicator'); el.textContent = syncing?'🔄 Syncing...':'🟢 Synced'; el.className = `badge ${syncing?'badge-warning':'badge-success'}`; if (!syncing) UI.updateQueueCount(); },
+      updateQueueCount() { document.getElementById('queueCount').textContent = `Queue: ${Utils.getQueue().length}`; },
+      renderLogs() {
+        const filter = document.getElementById('log-filter').value.toLowerCase();
+        const sheetFilter = document.getElementById('log-sheet-filter').value;
+        let logs = Utils.getLocal('audit');
+        if (filter) logs = logs.filter(l => l.user.toLowerCase().includes(filter) || l.action.toLowerCase().includes(filter) || l.sheet.toLowerCase().includes(filter));
+        if (sheetFilter) logs = logs.filter(l => l.sheet === sheetFilter);
+        document.querySelector('#log-table tbody').innerHTML = logs.map(l => `<tr><td>${Utils.formatDateTime(l.timestamp)}</td><td>${l.user}</td><td><span class="badge ${l.action==='delete'?'badge-danger':'badge-success'}">${l.action}</span></td><td>${l.sheet}</td><td><small title="${l.changes}">${l.changes.slice(0,60)}${l.changes.length>60?'...':''}</small></td></tr>`).join('') || '<tr><td colspan="5" class="text-center">ไม่พบข้อมูล</td></tr>';
+      },
+      closeFileWarning() { document.getElementById('file-warning').classList.remove('show'); }
+    };
+
+    // ========================================
+    // 🚀 APP
+    // ========================================
+    const App = {
+      user: null, currentPage: 'pos',
+      init() {
+        Sync.init();
+        ['pos','exp','stock','checkin'].forEach(p => {
+          const d = document.getElementById(`${p}-date`); if (d) d.value = Utils.today();
+          const t = document.getElementById(`${p}-time`); if (t) t.value = Utils.nowTime();
+        });
+        document.getElementById('exp-by-select').value = App.user?.username || '';
+        const saved = localStorage.getItem(CONFIG.USER_KEY);
+        if (saved) { App.user = JSON.parse(saved); App.showApp(); }
+      },
+      updateEmployeeDropdowns() {
+        const users = DB.get('Users');
+        const options = '<option value="">-- เลือกพนักงาน --</option>' + 
+          users.map(u => `<option value="${u.username}">${u.name || u.username}</option>`).join('');
+        
+        const dropdowns = [
+          'checkin-employee-select',
+          'checklist-employee-select',
+          'exp-by-select'
+        ];
+        
+        dropdowns.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            const currentValue = el.value;
+            el.innerHTML = options;
+            el.value = currentValue;
+          }
+        });
+        
+        Calendar.populateEmployeeSelect();
+      },
+      showApp() {
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-screen').style.display = 'block';
+        document.getElementById('sidebar-name').textContent = App.user.name;
+        document.getElementById('sidebar-email').textContent = App.user.email || App.user.username;
+        document.getElementById('sidebar-role').textContent = App.user.role.toUpperCase();
+        Auth.renderMenu();
+        App.navigate('pos');
+        Categories.renderCategorySelect();
+        POS.renderCategoryTabs(); Expense.renderCategoryTabs(); Stock.renderCategoryTabs();
+        POS.render(); Expense.render(); Stock.render(); Checkin.render();
+        Checklist.init(); Checklist.render();
+        Incidents.render();
+        document.getElementById('timesheet-month').value = Utils.today().slice(0, 7);
+        document.getElementById('calendar-month').value = Utils.today().slice(0, 7);
+        App.updateEmployeeDropdowns();
+        if (Auth.canAccess('users')) Users.render();
+        if (Auth.canAccess('logs')) UI.renderLogs();
+      },
+      navigate(tabId) {
+        if (App.currentPage === 'checkin' && tabId !== 'checkin') Camera.close();
+        if (!Auth.canAccess(tabId)) {
+          document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+          document.getElementById('access-denied').classList.remove('hidden');
+          document.getElementById('page-title').textContent = '🔒 Access Denied';
+          return;
+        }
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+        document.getElementById('access-denied').classList.add('hidden');
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        document.querySelector(`.nav-item[data-tab="${tabId}"]`)?.classList.add('active');
+        const titles = { pos:'🧾 POS', expense:'💸 ค่าใช้จ่าย', stock:'📦 สต็อก', checkin:'✅ Check-in', checklist:'📋 Checklist', incidents:'⚠️ เหตุการณ์', timesheet:'📊 Timesheet', calendar:'📅 ปฏิทิน', users:'👥 ผู้ใช้', logs:'📋 Audit' };
+        document.getElementById('page-title').textContent = titles[tabId]||'Restaurant OS';
+        App.currentPage = tabId;
+        if (tabId==='pos') { Categories.renderCategorySelect(); POS.renderCategoryTabs(); POS.render(); }
+        if (tabId==='expense') { Categories.renderCategorySelect(); Expense.renderCategoryTabs(); Expense.render(); }
+        if (tabId==='stock') { Categories.renderCategorySelect(); Stock.renderCategoryTabs(); Stock.render(); }
+        if (tabId==='checkin') Checkin.render();
+        if (tabId==='checklist') { Checklist.init(); Checklist.render(); }
+        if (tabId==='incidents') Incidents.render();
+        if (tabId==='timesheet') Timesheet.load();
+        if (tabId==='calendar') Calendar.load();
+        if (tabId==='users') Users.render();
+        if (tabId==='logs') UI.renderLogs();
+        if (tabId !== 'checkin') Camera.close();
+      },
+      async pullFromCloud() {
+        if (!Sync.online) return UI.toast('📴 ออฟไลน์ - ใช้ข้อมูลในเครื่อง', 'info');
+        UI.toast('📥 กำลังดึงข้อมูลจากคลาวด์...', 'info');
+        try {
+          const response = await fetch(CONFIG.GAS_URL, {
+            method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'pullAll', user: App.user?.username })
+          });
+          const result = await response.json();
+          if (result.success && result.data) {
+            Object.keys(result.data).forEach(sheet => {
+              if (result.data[sheet]) Utils.setLocal(sheet, result.data[sheet]);
+            });
+            POS.render(); Expense.render(); Stock.render(); Checkin.render();
+            Checklist.render(); Incidents.render();
+            if (Auth.canAccess('users')) Users.render();
+            Categories.renderCategorySelect();
+            POS.renderCategoryTabs(); Expense.renderCategoryTabs(); Stock.renderCategoryTabs();
+            App.updateEmployeeDropdowns();
+            Calendar.loadShiftDefinitions();
+            UI.toast('✅ ดึงข้อมูลสำเร็จ', 'success');
+          }
+        } catch (err) { UI.toast('❌ ดึงข้อมูลล้มเหลว: ' + err.message, 'error'); }
+      },
+      logout() { Auth.logout(); }
+    };
+
+    document.addEventListener('DOMContentLoaded', App.init);
+  </script>
+</body>
+</html>
